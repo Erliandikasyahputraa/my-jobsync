@@ -118,6 +118,7 @@ describe("add_job agent tool", () => {
       "get_resume",
       "review_resume",
       "match_job",
+      "generate_cover_letter",
     ]);
   });
 });

@@ -94,13 +94,25 @@ describe("agent chat system prompt", () => {
     expect(AGENT_CHAT_PROMPT_SECTIONS.capabilities).toMatch(/never ask them to open a job/i);
   });
 
-  it("describes all four tools", () => {
+  it("describes all five tools", () => {
     expect(Object.keys(AGENT_TOOL_DESCRIPTIONS)).toEqual([
       "add_job",
       "get_resume",
       "review_resume",
       "match_job",
+      "generate_cover_letter",
     ]);
+  });
+
+  // Same lesson as match_job in eval-B74: a precondition the tool can check
+  // for itself must never be stated as one the model has to verify first.
+  it("tells the model to call generate_cover_letter rather than ask which page the user is on", () => {
+    expect(AGENT_TOOL_DESCRIPTIONS.generate_cover_letter).toMatch(
+      /never ask them to open a job/i,
+    );
+    expect(AGENT_CHAT_PROMPT_SECTIONS.capabilities).toMatch(
+      /never write the letter yourself/i,
+    );
   });
 
   // get_resume stays the on-ramp for reading a resume, but it is no longer

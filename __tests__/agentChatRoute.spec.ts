@@ -247,6 +247,7 @@ describe("POST /api/ai/chat", () => {
       "get_resume",
       "review_resume",
       "match_job",
+      "generate_cover_letter",
     ]);
   });
 

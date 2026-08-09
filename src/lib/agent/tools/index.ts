@@ -5,9 +5,10 @@ import { buildAddJobTool } from "./addJob";
 import { buildGetResumeTool } from "./getResume";
 import { buildReviewResumeTool } from "./reviewResume";
 import { buildMatchJobTool } from "./matchJob";
+import { buildGenerateCoverLetterTool } from "./generateCoverLetter";
 
-// review_resume and match_job deliberately break the "a tool touches neither
-// the route nor provider resolution" rule in CLAUDE.md: they run their own
+// The three nested tools deliberately break the "a tool touches neither the
+// route nor provider resolution" rule in CLAUDE.md: they run their own
 // generation, so they need the resolved model and the stream writer. Recorded
 // in docs/architecture/agent-chat.md rather than contorted around.
 export function buildAgentTools(ctx: {
@@ -19,8 +20,8 @@ export function buildAgentTools(ctx: {
   modelName: string;
   writer: UIMessageStreamWriter;
 }): ToolSet {
-  // One per request, so the two nested tools cannot run at once but two users
-  // never block each other.
+  // One per request, so no two nested tools run at once but two users never
+  // block each other.
   const nestedGuard: NestedGenerationGuard = { running: false };
 
   return {
@@ -44,6 +45,15 @@ export function buildAgentTools(ctx: {
       writer: ctx.writer,
       guard: nestedGuard,
     }),
+    generate_cover_letter: buildGenerateCoverLetterTool({
+      userId: ctx.userId,
+      pageJobId: ctx.pageContext?.jobId,
+      model: ctx.model,
+      provider: ctx.provider,
+      modelName: ctx.modelName,
+      writer: ctx.writer,
+      guard: nestedGuard,
+    }),
   };
 }
 
@@ -52,4 +62,5 @@ export {
   buildGetResumeTool,
   buildReviewResumeTool,
   buildMatchJobTool,
+  buildGenerateCoverLetterTool,
 };

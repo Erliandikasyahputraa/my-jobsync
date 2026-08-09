@@ -69,6 +69,10 @@ export const APP_CONSTANTS = {
   // output is a single 250-400 word letter, not a multi-section analysis.
   AI_COVER_LETTER_TIMEOUT_MS: 120_000,
 
+  // Floor for "too short to be a letter", shared by the agent tool and the
+  // save action so the two cannot drift apart.
+  MIN_COVER_LETTER_CHARS: 10,
+
   // Automation manual run rate limiting
   AUTOMATION_MAX_MANUAL_RUNS_PER_HOUR: 5,
   AUTOMATION_RATE_LIMIT_WINDOW_MS: 60 * 60 * 1000, // 1 hour

@@ -10,8 +10,6 @@ import { buildCoverLetterTitle } from "@/lib/coverLetterTitle";
 // so the saved document is the same shape a hand-written letter produces.
 const md = new MarkdownIt({ html: false, linkify: false, breaks: true });
 
-const MIN_CONTENT_LENGTH = 10;
-
 export const getCoverLetterList = async (
   page: number = 1,
   limit: number = APP_CONSTANTS.RECORDS_PER_PAGE
@@ -171,7 +169,10 @@ export const generateCoverLetterForJob = async (
       throw new Error("Not authenticated");
     }
 
-    if (!markdown || markdown.trim().length < MIN_CONTENT_LENGTH) {
+    if (
+      !markdown ||
+      markdown.trim().length < APP_CONSTANTS.MIN_COVER_LETTER_CHARS
+    ) {
       throw new Error("Generated cover letter was too short to save.");
     }
 
