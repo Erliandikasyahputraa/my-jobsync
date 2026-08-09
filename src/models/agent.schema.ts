@@ -65,3 +65,12 @@ export const AgentMatchJobSchema = z.object({
 });
 
 export type AgentMatchJobInput = z.infer<typeof AgentMatchJobSchema>;
+
+// No job field of any kind, for the same reason AgentMatchJobSchema has none:
+// the letter is written for the job the user is viewing, and the id comes from
+// server-held page context.
+export const AgentCoverLetterSchema = z.object({
+  resumeTitle: z.string().optional().describe("The title of the resume the letter should draw on, as the user referred to it. Omit this entirely if the user did not name one — the app then uses the resume linked to the job, or their default resume."),
+});
+
+export type AgentCoverLetterInput = z.infer<typeof AgentCoverLetterSchema>;

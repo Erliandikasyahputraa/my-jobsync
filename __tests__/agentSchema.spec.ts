@@ -3,7 +3,13 @@ import {
   AgentAddJobSchema,
   AgentAddJobParseSchema,
   AgentChatRequestSchema,
+  AgentCoverLetterSchema,
 } from "@/models/agent.schema";
+import {
+  AGENT_CHAT_TERMINAL_TOOLS,
+  AGENT_NESTED_TOOLS,
+  isNestedTool,
+} from "@/models/agent.model";
 import { McpAddJobInputShape } from "@/models/mcp.schema";
 import { JOB_STATUS_VALUES } from "@/lib/constants";
 
@@ -84,5 +90,38 @@ describe("AgentChatRequestSchema", () => {
 
   it("rejects a body with no messages array", () => {
     expect(AgentChatRequestSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("AgentCoverLetterSchema", () => {
+  // The letter is written for the job the user is looking at. Any job-shaped
+  // input is an IDOR surface the model could be talked into filling.
+  it("exposes exactly one optional field and no job identifier", () => {
+    expect(Object.keys(AgentCoverLetterSchema.shape)).toEqual(["resumeTitle"]);
+    expect(AgentCoverLetterSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("tells the model to omit the title unless the user named one", () => {
+    expect(AgentCoverLetterSchema.shape.resumeTitle.description).toMatch(/omit/i);
+  });
+});
+
+describe("nested tool registry", () => {
+  it("names every tool that runs its own generation", () => {
+    expect([...AGENT_NESTED_TOOLS]).toEqual([
+      "review_resume",
+      "match_job",
+      "generate_cover_letter",
+    ]);
+    expect(isNestedTool("generate_cover_letter")).toBe(true);
+    expect(isNestedTool("add_job")).toBe(false);
+  });
+
+  // A tool that runs its own generation MUST end the turn, or one turn can
+  // chain two of them past the turn deadline and discard both.
+  it("makes every nested tool terminal", () => {
+    for (const name of AGENT_NESTED_TOOLS) {
+      expect([...AGENT_CHAT_TERMINAL_TOOLS]).toContain(name);
+    }
   });
 });
