@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { AGENT_TOOL_DESCRIPTIONS } from '../../src/lib/agent/prompt';
 import {
   AgentAddJobSchema,
+  AgentCoverLetterSchema,
   AgentGetResumeSchema,
   AgentMatchJobSchema,
   AgentReviewResumeSchema,
@@ -41,6 +42,14 @@ export function getTools() {
         name: 'match_job',
         description: AGENT_TOOL_DESCRIPTIONS.match_job,
         parameters: z.toJSONSchema(AgentMatchJobSchema, { io: 'input' }),
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'generate_cover_letter',
+        description: AGENT_TOOL_DESCRIPTIONS.generate_cover_letter,
+        parameters: z.toJSONSchema(AgentCoverLetterSchema, { io: 'input' }),
       },
     },
   ];

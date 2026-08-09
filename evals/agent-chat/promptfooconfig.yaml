@@ -259,3 +259,38 @@ tests:
     assert:
       - type: javascript
         value: file://./assertions.ts:assertOneNestedCall
+
+  # The cover letter flow's only step: one tool call, and the app does the rest.
+  - description: Cover letter request - calls generate_cover_letter
+    vars:
+      userMessage: Write me a cover letter for this job.
+    assert:
+      - type: javascript
+        value: file://./assertions.ts:assertCallsCoverLetter
+
+  # What the job page's Cover Letter button will send once Task 5 rewires it.
+  # It is the primary entry point, so it is measured rather than assumed.
+  - description: Cover letter button phrasing - calls generate_cover_letter
+    vars:
+      userMessage: Write a cover letter for Senior Backend Engineer at Northwind Cloud
+    assert:
+      - type: javascript
+        value: file://./assertions.ts:assertCallsCoverLetter
+
+  # Different wording for the same intent, and the one most likely to be
+  # answered with prose instead of a tool call.
+  - description: Letter-of-application wording - still generate_cover_letter
+    vars:
+      userMessage: Can you draft a letter of application I can send with this?
+    assert:
+      - type: javascript
+        value: file://./assertions.ts:assertCallsCoverLetter
+
+  # A letter is not a match. This is the row that catches a tool description
+  # that blurs the two job-page tools.
+  - description: Match and letter at once - exactly one nested tool call
+    vars:
+      userMessage: How well do I match this job, and write me a cover letter.
+    assert:
+      - type: javascript
+        value: file://./assertions.ts:assertOneNestedCall
