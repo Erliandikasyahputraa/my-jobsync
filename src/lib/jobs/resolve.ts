@@ -1,5 +1,5 @@
 import prisma from "@/lib/db";
-import { JOB_TYPES, WORKPLACE_TYPES } from "@/models/job.model";
+import { JOB_TYPES, WORKPLACE_TYPES, matchEnumEntry } from "@/models/job.model";
 import { canonicalizeEntityValue } from "./canonicalize";
 
 export interface ResolvedEntity {
@@ -148,30 +148,31 @@ export async function resolveTags(
 
 // Bucket B — resolve-ONLY, never create
 
+// A caller-correctable bad value, as opposed to a database or programming
+// failure. The message names the field and lists the valid values, so callers
+// that can retry (the agent chat's add_job) may show it to their caller.
+export class JobResolutionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "JobResolutionError";
+  }
+}
+
 export function resolveJobType(input?: string): string {
   const entries = Object.entries(JOB_TYPES) as [string, string][];
   if (!input) return entries[0][0];
-  const match = entries.find(
-    ([key, value]) =>
-      key.toLowerCase() === input.toLowerCase() ||
-      value.toLowerCase() === input.toLowerCase(),
-  );
+  const match = matchEnumEntry(JOB_TYPES, input);
   if (match) return match[0];
   const valid = entries.map(([, value]) => value);
-  throw new Error(`Invalid jobType "${input}". Valid values: ${valid.join(", ")}`);
+  throw new JobResolutionError(`Invalid jobType "${input}". Valid values: ${valid.join(", ")}`);
 }
 
 export function resolveWorkplaceType(input?: string): string | null {
   if (!input) return null;
-  const entries = Object.entries(WORKPLACE_TYPES) as [string, string][];
-  const match = entries.find(
-    ([key, value]) =>
-      key.toLowerCase() === input.toLowerCase() ||
-      value.toLowerCase() === input.toLowerCase(),
-  );
+  const match = matchEnumEntry(WORKPLACE_TYPES, input);
   if (match) return match[0];
-  const valid = entries.map(([, value]) => value);
-  throw new Error(`Invalid workplaceType "${input}". Valid values: ${valid.join(", ")}`);
+  const valid = Object.values(WORKPLACE_TYPES);
+  throw new JobResolutionError(`Invalid workplaceType "${input}". Valid values: ${valid.join(", ")}`);
 }
 
 export async function resolveJobStatus(value?: string): Promise<string> {
@@ -179,7 +180,7 @@ export async function resolveJobStatus(value?: string): Promise<string> {
   const status = await prisma.jobStatus.findUnique({ where: { value: target } });
   if (!status) {
     const all = await prisma.jobStatus.findMany({ select: { value: true } });
-    throw new Error(
+    throw new JobResolutionError(
       `Invalid status "${target}". Valid values: ${all.map((s) => s.value).join(", ")}`,
     );
   }

@@ -115,6 +115,10 @@ function useAgentChatValue(initialMessages: UIMessage[]) {
   // keyed by toolCallId so two nested calls cannot collide.
   const [toolStreams, setToolStreams] = useState<Record<string, string>>({});
 
+  // The jobs list is client state loaded by a server action, so router.refresh
+  // cannot reach it — pages that hold their own rows subscribe to this counter.
+  const [jobWrites, setJobWrites] = useState(0);
+
   const chat = useChat({
     messages: initialMessages,
     transport: new DefaultChatTransport({
@@ -158,7 +162,10 @@ function useAgentChatValue(initialMessages: UIMessage[]) {
       // it one user message later, and the next thing the user types calls
       // add_job again on the job they just saved. It self-corrected only on
       // reload, when the stubbed row re-seeded the transcript.
-      if (wrote) chat.setMessages((prev) => stubConsumedPastes(prev));
+      if (wrote) {
+        chat.setMessages((prev) => stubConsumedPastes(prev));
+        setJobWrites((n) => n + 1);
+      }
 
       // Unconditional: an RSC refresh on an irrelevant page is a wasted
       // request, not a bug. A stale jobs list, a stale saved review or a
@@ -319,6 +326,7 @@ function useAgentChatValue(initialMessages: UIMessage[]) {
     close,
     messages: chat.messages,
     toolStreams,
+    jobWrites,
     status: chat.status,
     error: chat.error,
     clearError: chat.clearError,

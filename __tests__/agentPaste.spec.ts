@@ -120,6 +120,23 @@ describe("stubConsumedPastes", () => {
     expect(part.data.consumed).toBe(true);
   });
 
+  // chars is display-only, and the chip is still labelling the user's paste.
+  // Rewriting it to the stub's length made the count visibly shrink after the
+  // save, as if we had truncated what they pasted.
+  it("keeps the original character count on the stubbed chip", () => {
+    const posting = "the whole 6kb posting";
+    const messages = [
+      userMsg("1", [pastePart("p1", posting)]),
+      assistantMsg("2", [
+        toolPart("output-available", {
+          output: { created: true, jobId: "job-1", resolutions: [] },
+        }),
+      ]),
+    ] as any;
+    const part: any = stubConsumedPastes(messages)[0].parts[0];
+    expect(part.data.chars).toBe(posting.length);
+  });
+
   it("leaves an unconsumed paste alone while the approval is still pending", () => {
     const messages = [
       userMsg("1", [pastePart("p1", "the whole 6kb posting")]),

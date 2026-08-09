@@ -3,10 +3,17 @@
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { useAgentChat } from "@/components/agent/AgentChatProvider";
 
-// Both send immediately on click — neither needs editing first. "Add this
+// All send immediately on click — none need editing first. "Add this
 // job posting" has no company/title yet, so the model asks the user to
-// paste it rather than calling add_job.
-const EXAMPLES = ["Add a job posting", "Review resume"];
+// paste it rather than calling add_job. "Match a job" and "Generate cover
+// letter" have no page context here, so the tools reply with a graceful
+// "no_job" result telling the user to open a job's page first.
+const EXAMPLES = [
+  "Add a job posting",
+  "Review resume",
+  "Match a job",
+  "Generate cover letter",
+];
 
 export function AgentChatEmptyState() {
   const { sendMessage, preflight } = useAgentChat();

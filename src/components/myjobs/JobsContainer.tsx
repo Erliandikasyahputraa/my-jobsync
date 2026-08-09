@@ -48,6 +48,7 @@ import { NoteDialog } from "./NoteDialog";
 import { format } from "date-fns";
 import { RecordsCount } from "../RecordsCount";
 import { getFromLocalStorage, saveToLocalStorage } from "@/utils/localstorage.utils";
+import { useAgentChat } from "../agent/AgentChatProvider";
 
 type MyJobsProps = {
   statuses: JobStatus[];
@@ -68,6 +69,7 @@ function JobsContainer({
 }: MyJobsProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { jobWrites } = useAgentChat();
   const queryParams = useSearchParams();
   const createQueryString = useCallback(
     (name: string, value: string) => {
@@ -261,6 +263,15 @@ function JobsContainer({
   useEffect(() => {
     (async () => await loadJobs(1))();
   }, [loadJobs]);
+
+  // The agent saves the job server-side, so only this counter tells us a row
+  // appeared. Deps are the counter alone: reloadJobs changes with every filter
+  // and keystroke, and the effects above already cover those.
+  useEffect(() => {
+    if (jobWrites === 0) return;
+    void reloadJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobWrites]);
 
   useEffect(() => {
     if (searchTerm !== "") {

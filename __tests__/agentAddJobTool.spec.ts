@@ -1,6 +1,7 @@
 import { buildAddJobTool } from "@/lib/agent/tools/addJob";
 import { buildAgentTools } from "@/lib/agent/tools";
 import { createJobFromNames } from "@/lib/jobs/createJobFromNames";
+import { JobResolutionError } from "@/lib/jobs/resolve";
 
 vi.mock("@/lib/jobs/createJobFromNames", () => ({ createJobFromNames: vi.fn() }));
 
@@ -110,6 +111,19 @@ describe("add_job agent tool", () => {
     const result: any = await execute(buildAddJobTool("user-1", "posting"), { company: "Acme", jobTitle: "Engineer" });
     expect(result.validationError).toBeTruthy();
     expect(result.validationError).not.toContain("db is down");
+  });
+
+  // An unusable enum value is the model's mistake to fix, so it has to see
+  // which field and which values. Without this it guessed, and its guess was
+  // to drop the field — losing a value the posting actually stated.
+  it("surfaces a resolver's validation message so the model can retry", async () => {
+    (createJobFromNames as any).mockRejectedValue(
+      new JobResolutionError('Invalid workplaceType "Moon Base". Valid values: Remote, Hybrid, Onsite'),
+    );
+    const result: any = await execute(buildAddJobTool("user-1", "posting"), { company: "Acme", jobTitle: "Engineer" });
+    expect(result.created).toBe(false);
+    expect(result.validationError).toContain("workplaceType");
+    expect(result.validationError).toContain("Onsite");
   });
 
   it("registers exactly the tools the chat exposes", () => {

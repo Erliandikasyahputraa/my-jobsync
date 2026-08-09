@@ -77,7 +77,10 @@ export function stubConsumedPastes(messages: UIMessage[]): UIMessage[] {
       if (!isAgentPastePart(part) || part.data.consumed) return part;
       const stubbed: AgentPastePart = {
         ...part,
-        data: { ...part.data, text: label, chars: label.length, consumed: true },
+        // chars is left alone: the chip still labels the user's paste, so
+        // rewriting it to the stub's length shrinks the count on screen as
+        // if we had truncated what they pasted.
+        data: { ...part.data, text: label, consumed: true },
       };
       return stubbed;
     }),

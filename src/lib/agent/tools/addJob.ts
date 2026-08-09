@@ -3,6 +3,7 @@ import { APP_CONSTANTS } from "@/lib/constants";
 import { AGENT_TOOL_DESCRIPTIONS } from "@/lib/agent/prompt";
 import { AgentAddJobParseSchema, AgentAddJobSchema } from "@/models/agent.schema";
 import { createJobFromNames } from "@/lib/jobs/createJobFromNames";
+import { JobResolutionError } from "@/lib/jobs/resolve";
 import type { AgentAddJobResult } from "@/models/agent.model";
 
 const NO_DESCRIPTION = "No job description was supplied. Ask the user to paste the job posting, or to type the role's details, then try again.";
@@ -62,6 +63,12 @@ export function buildAddJobTool(userId: string, pastedText?: string) {
         };
       } catch (error) {
         console.error("[agent-chat] add_job failed:", error);
+        // Our own text, naming the field and the values it accepts, so the
+        // model can fix the argument instead of guessing — its guess was to
+        // drop the field, losing a value the posting stated. Every other
+        // error keeps the fixed string: provider and Prisma messages carry
+        // request context that must not reach the model.
+        if (error instanceof JobResolutionError) return failed(error.message);
         return failed("Saving the job failed. Try again, or add it from the Jobs page.");
       }
     },

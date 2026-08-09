@@ -1,16 +1,34 @@
 import { z } from "zod";
 import { APP_CONSTANTS, JOB_STATUS_VALUES } from "@/lib/constants";
+import { WORKPLACE_TYPES, matchEnumEntry } from "@/models/job.model";
+
+// An enum rather than a described string, for the same reason status is one:
+// a small local model fills an enum-constrained slot and ignores prose hints.
+// It sent "On-site" — the posting's own spelling — and when that was rejected
+// it dropped the field entirely, losing a value the posting stated. The
+// preprocess folds case and separators through matchEnumEntry, so "On-site",
+// "on site" and "REMOTE" all still validate for existing MCP callers.
+// Verified this keeps the JSON-schema `enum: [...]` the model and the MCP SDK
+// read. Shared by both shapes because they resolve through the same resolver.
+const workplaceTypeField = z
+  .preprocess(
+    (v) => (typeof v === "string" ? (matchEnumEntry(WORKPLACE_TYPES, v)?.[1] ?? v) : v),
+    z.enum(WORKPLACE_TYPES),
+  )
+  .optional()
+  .describe(`Work arrangement stated in the posting. One of: ${Object.values(WORKPLACE_TYPES).join(", ")}.`);
 
 // Raw input shape for MCP tool registration (no transforms — SDK uses this for JSON schema)
 export const McpAddJobInputShape = {
   company: z.string().min(1, "company is required"),
   jobTitle: z.string().min(1, "jobTitle is required"),
-  jobDescription: z.string().min(10, "jobDescription must be at least 10 characters")
-    .describe("The complete job posting text, copied in full — do not summarize, shorten, or paraphrase it. Markdown-formatted is supported; plain text also works."),
+  jobDescription: z.string()
+    .refine((val) => val === "N/A" || val.length >= 10, "jobDescription must be at least 10 characters")
+    .describe("The complete job posting text, copied in full — do not summarize, shorten, or paraphrase it. Markdown-formatted is supported; plain text also works. Use 'N/A' only if no description is available at all."),
   location: z.string().optional().describe("City, province/state, country, or 'Remote' — e.g. 'Calgary, AB'. Do not include a street address."),
   source: z.string().optional().describe("Job board or site the listing came from, e.g. 'LinkedIn', 'Indeed', 'company website'. If not stated explicitly, infer it from the job posting's URL/domain when possible instead of leaving it blank."),
   jobType: z.string().optional().describe("Employment type: 'Full-time', 'Part-time', or 'Contract'"),
-  workplaceType: z.string().optional().describe("Work arrangement: 'Remote', 'Hybrid', or 'Onsite'"),
+  workplaceType: workplaceTypeField,
   // Lowercased before the enum check so a caller sending "Applied"/"Draft"
   // (capitalized, like the old free-text field silently tolerated via
   // resolveJobStatus's case-insensitive DB lookup) still validates instead
@@ -151,7 +169,7 @@ export const McpUpdateJobInputShape = {
   location: z.string().optional(),
   source: z.string().optional(),
   jobType: z.string().optional().describe("Employment type: 'Full-time', 'Part-time', or 'Contract'"),
-  workplaceType: z.string().optional().describe("Work arrangement: 'Remote', 'Hybrid', or 'Onsite'"),
+  workplaceType: workplaceTypeField,
   // Same lowercase-preprocess treatment as add_job's status (Task 1) — the
   // SDK validates against this exact shape, so the case-insensitivity has to
   // live here too, not just on the transformed McpUpdateJobSchema.

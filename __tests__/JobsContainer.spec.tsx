@@ -52,6 +52,11 @@ vi.mock("next/navigation", () => ({
   useSearchParams: vi.fn(),
 }));
 
+// useAgentChat throws outside the provider, which this spec does not mount.
+vi.mock("@/components/agent/AgentChatProvider", () => ({
+  useAgentChat: () => ({ jobWrites: 0 }),
+}));
+
 global.ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}
