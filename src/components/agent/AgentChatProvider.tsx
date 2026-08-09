@@ -30,6 +30,7 @@ import { checkOllamaConnection } from "@/utils/ai.utils";
 import { AiProvider } from "@/models/ai.model";
 import {
   AGENT_NESTED_STREAM_PART_TYPE,
+  isNestedTool,
   type AgentAddJobResult,
   type AgentNestedStreamData,
   type PageContext,
@@ -144,11 +145,11 @@ function useAgentChatValue(initialMessages: UIMessage[]) {
         return (part.output as AgentAddJobResult | undefined)?.created === true;
       });
       // Any nested tool that saves server-side leaves the page behind the
-      // panel stale — the saved review card, or the job's match score.
+      // panel stale — the saved review card, the job's match score, or the
+      // job's cover-letter button flipping to "Regenerate Letter".
       const generated = finishedParts.some((part) => {
         if (!isToolUIPart(part) || part.state !== "output-available") return false;
-        const tool = getToolName(part);
-        return tool === "review_resume" || tool === "match_job";
+        return isNestedTool(getToolName(part));
       });
 
       // The route stubs the paste on its way into the DB, but that copy is

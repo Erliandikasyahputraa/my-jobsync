@@ -4,10 +4,12 @@ import Link from "next/link";
 import { getToolName, type ToolUIPart } from "ai";
 import { Badge } from "@/components/ui/badge";
 import { AgentResumePicker } from "@/components/agent/AgentResumePicker";
+import { AgentMarkdown } from "@/components/agent/AgentMarkdown";
 import { AgentMatchContent } from "@/components/agent/AgentMatchContent";
 import { AgentReviewContent } from "@/components/agent/AgentReviewContent";
 import type {
   AgentAddJobResult,
+  AgentCoverLetterResult,
   AgentGetResumeResult,
   AgentMatchJobResult,
   AgentReviewResumeResult,
@@ -245,6 +247,90 @@ function MatchJobResult({ output }: { output: AgentMatchJobResult }) {
   );
 }
 
+// The letter comes from the tool output, not from the streamed text: the
+// stream is a progress indicator and the output is what was saved.
+function CoverLetterResult({ output }: { output: AgentCoverLetterResult }) {
+  if (output.status === "no_job") {
+    return (
+      <p className="text-sm">
+        Open the job you want a letter for first — I write for the job
+        you&apos;re looking at.
+      </p>
+    );
+  }
+
+  if (output.status === "no_description") {
+    return (
+      <p className="text-sm">
+        <strong>{output.jobTitle}</strong> has no real description yet. Add the
+        posting and I can write a letter from it.
+      </p>
+    );
+  }
+
+  if (output.status === "no_resumes") {
+    return (
+      <p className="text-sm">
+        You don&apos;t have any resumes yet — create one on the Profile page.
+      </p>
+    );
+  }
+
+  if (output.status === "needs_selection") {
+    return (
+      <div className="text-sm">
+        <p>Which resume should the letter draw on?</p>
+        <AgentResumePicker
+          resumes={output.resumes}
+          messageFor={(title) =>
+            `Write a cover letter for this job using my resume "${title}"`
+          }
+        />
+      </div>
+    );
+  }
+
+  if (output.status === "unreadable") {
+    return (
+      <p className="text-sm">
+        Couldn&apos;t read <strong>{output.title}</strong> — {output.reason}
+      </p>
+    );
+  }
+
+  if (output.status === "generation_failed") {
+    return (
+      <p className="text-sm">
+        Couldn&apos;t write a letter for <strong>{output.jobTitle}</strong> —{" "}
+        {output.reason}
+      </p>
+    );
+  }
+
+  return (
+    <div className="text-sm">
+      <AgentMarkdown text={output.body} />
+      <p className="mt-2 text-xs text-muted-foreground">
+        {output.jobTitle}
+        {output.company ? ` at ${output.company}` : ""} · drawn from{" "}
+        {output.resumeTitle}
+      </p>
+      {output.saved ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Saved as “{output.coverLetterTitle}” —{" "}
+          <Link href="/dashboard/profile" className="underline">
+            edit it in Profile → Documents
+          </Link>
+        </p>
+      ) : (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Letter not saved — {output.saveError}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function AgentResultCard({ part }: { part: ToolUIPart }) {
   if (part.state === "output-denied") {
     return (
@@ -277,6 +363,8 @@ export function AgentResultCard({ part }: { part: ToolUIPart }) {
       <ReviewResumeResult output={part.output as AgentReviewResumeResult} />
     ) : toolName === "match_job" ? (
       <MatchJobResult output={part.output as AgentMatchJobResult} />
+    ) : toolName === "generate_cover_letter" ? (
+      <CoverLetterResult output={part.output as AgentCoverLetterResult} />
     ) : null;
 
   return <div className="rounded-sm border p-3">{body}</div>;

@@ -20,8 +20,13 @@ import { useAgentChat } from "@/components/agent/AgentChatProvider";
 import { resolvePastedText } from "@/lib/agent/paste";
 import { parseJobMatch } from "@/lib/ai/jobMatch/parse";
 import { parseResumeReview } from "@/lib/ai/resumeReview/parse";
+import { stripThinking } from "@/lib/ai/stripThinking";
 import { cn } from "@/lib/utils";
-import { isAgentPastePart, type AgentPastePartData } from "@/models/agent.model";
+import {
+  isAgentPastePart,
+  isNestedTool,
+  type AgentPastePartData,
+} from "@/models/agent.model";
 
 function PasteChip({ data }: { data: AgentPastePartData }) {
   const chars = data.chars.toLocaleString();
@@ -128,9 +133,7 @@ export function AgentChatMessages() {
                 case "input-streaming":
                 case "input-available": {
                   const tool = getToolName(part);
-                  const nested =
-                    tool === "review_resume" || tool === "match_job";
-                  const streamed = nested
+                  const streamed = isNestedTool(tool)
                     ? toolStreams[part.toolCallId]
                     : undefined;
                   if (!streamed) return <AgentToolRunningCard key={i} part={part} />;
@@ -143,6 +146,11 @@ export function AgentChatMessages() {
                         scores={parsed.scores}
                       />
                     );
+                  }
+                  // A letter has no scores line, so stripping reasoning is the
+                  // whole of its parse.
+                  if (tool === "generate_cover_letter") {
+                    return <AgentMarkdown key={i} text={stripThinking(streamed)} />;
                   }
                   const parsed = parseResumeReview(streamed);
                   return (

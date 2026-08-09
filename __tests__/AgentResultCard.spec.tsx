@@ -303,4 +303,68 @@ describe("AgentResultCard", () => {
     );
     expect(screen.getByText(/Database is locked/i)).toBeInTheDocument();
   });
+
+  it("renders the letter and where it was saved", () => {
+    render(
+      <AgentResultCard
+        part={outputPart("generate_cover_letter", {
+          status: "ok",
+          jobId: "job-1",
+          jobTitle: "Senior Backend Engineer",
+          company: "Northwind Cloud",
+          resumeId: "r9",
+          resumeTitle: "Senior Engineer Resume",
+          body: "Dear Hiring Manager,\n\nI am writing to apply.",
+          coverLetterId: "cl-1",
+          coverLetterTitle: "Senior Backend Engineer - Northwind Cloud",
+          saved: true,
+        })}
+      />,
+    );
+    expect(screen.getByText(/Dear Hiring Manager/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Senior Backend Engineer - Northwind Cloud/i),
+    ).toBeInTheDocument();
+  });
+
+  it("tells the user to open a job when a letter has none in context", () => {
+    render(
+      <AgentResultCard
+        part={outputPart("generate_cover_letter", { status: "no_job" })}
+      />,
+    );
+    expect(screen.getByText(/open the job/i)).toBeInTheDocument();
+  });
+
+  it("explains a title-only job instead of failing silently", () => {
+    render(
+      <AgentResultCard
+        part={outputPart("generate_cover_letter", {
+          status: "no_description",
+          jobTitle: "Senior Backend Engineer",
+        })}
+      />,
+    );
+    expect(screen.getByText(/description/i)).toBeInTheDocument();
+  });
+
+  it("still shows the letter when the save failed", () => {
+    render(
+      <AgentResultCard
+        part={outputPart("generate_cover_letter", {
+          status: "ok",
+          jobId: "job-1",
+          jobTitle: "Senior Backend Engineer",
+          company: "Northwind Cloud",
+          resumeId: "r9",
+          resumeTitle: "Senior Engineer Resume",
+          body: "Dear Hiring Manager,",
+          saved: false,
+          saveError: "Database is locked.",
+        })}
+      />,
+    );
+    expect(screen.getByText(/Dear Hiring Manager/i)).toBeInTheDocument();
+    expect(screen.getByText(/Database is locked/i)).toBeInTheDocument();
+  });
 });

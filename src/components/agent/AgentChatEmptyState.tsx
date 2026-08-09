@@ -23,9 +23,9 @@ export function AgentChatEmptyState() {
       <p className="text-sm text-muted-foreground">
         I can add a job to your tracker — paste a posting or type the details,
         and I&apos;ll show you what I extracted before anything is saved. I can
-        also read and review your resumes, and score how well one of them
-        matches a job while you&apos;re looking at it. I can&apos;t search your
-        existing jobs or read your tasks yet.
+        also read and review your resumes, and while you&apos;re looking at a
+        job I can score how well one of them matches it or write you a cover
+        letter. I can&apos;t search your existing jobs or read your tasks yet.
       </p>
 
       <Suggestions>

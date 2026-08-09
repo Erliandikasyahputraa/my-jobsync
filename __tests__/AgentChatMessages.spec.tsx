@@ -322,4 +322,27 @@ describe("AgentChatMessages", () => {
     expect(screen.getByText(/Streaming\./i)).toBeInTheDocument();
     expect(screen.queryByText(/SCORES:/)).not.toBeInTheDocument();
   });
+
+  it("renders a running generate_cover_letter from its streamed text", () => {
+    chat.toolStreams = {
+      c1: "<think>planning</think>Dear Hiring Manager,\n\nI am writing.",
+    };
+    chat.messages = [
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-generate_cover_letter",
+            toolCallId: "c1",
+            state: "input-available",
+            input: {},
+          },
+        ],
+      },
+    ] as any;
+    render(<AgentChatMessages />);
+    expect(screen.getByText(/Dear Hiring Manager/i)).toBeInTheDocument();
+    expect(screen.queryByText(/planning/)).not.toBeInTheDocument();
+  });
 });
