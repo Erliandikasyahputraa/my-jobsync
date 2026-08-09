@@ -46,9 +46,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
-import { GenerateCoverLetterSection } from "./GenerateCoverLetterSection";
 import { NotesSection } from "./NotesSection";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { DownloadFileButton } from "../profile/DownloadFileButton";
 import { MatchDetails } from "../automations/MatchDetails";
 import type { JobMatchData } from "@/models/ai.schemas";
@@ -97,11 +96,8 @@ function JobDetails({
     approvalPending,
   } = useAgentChat();
   const [showClearChatConfirm, setShowClearChatConfirm] = useState(false);
+  const [pendingChatMessage, setPendingChatMessage] = useState("");
   const [currentStatus, setCurrentStatus] = useState(job.Status);
-  const [coverLetterOpen, setCoverLetterOpen] = useState(false);
-  const [currentCoverLetterId, setCurrentCoverLetterId] = useState(
-    job.coverLetterId,
-  );
   const [editJobTarget, setEditJobTarget] = useState<JobResponse | null>(
     null,
   );
@@ -121,40 +117,36 @@ function JobDetails({
     }
   }, [job.matchData]);
 
-  // Panel first so a failed clear can never leave the button looking dead,
-  // and the match is sent either way — a conversation that would not clear
-  // is no reason to withhold it.
-  const startMatch = async () => {
+  const jobLabel = `${job.JobTitle?.label ?? "this job"}${
+    job.Company?.label ? ` at ${job.Company.label}` : ""
+  }`;
+
+  // Panel first so a failed clear can never leave a button looking dead, and
+  // the message is sent either way — a conversation that would not clear is no
+  // reason to withhold it.
+  const startChat = async (text: string) => {
     openChat();
     try {
       await clearChat();
     } catch {
-      // Reported by the action itself; the match still goes out.
+      // Reported by the action itself; the message still goes out.
     }
-    const label = `${job.JobTitle?.label ?? "this job"}${
-      job.Company?.label ? ` at ${job.Company.label}` : ""
-    }`;
-    void sendMessage({
-      parts: [{ type: "text", text: `Match my resume to ${label}` }],
-    });
+    void sendMessage({ parts: [{ type: "text", text }] });
   };
 
-  const onMatchClick = () => {
+  const requestChat = (text: string) => {
     if (approvalPending) {
+      setPendingChatMessage(text);
       setShowClearChatConfirm(true);
       return;
     }
-    void startMatch();
+    void startChat(text);
   };
 
   const coverLetterBlockedReason =
     job.descriptionCompleteness === "title-only"
       ? "Add a job description first"
       : undefined;
-
-  const handleCoverLetterSaved = useCallback((coverLetterId: string) => {
-    setCurrentCoverLetterId(coverLetterId);
-  }, []);
 
   const onEditJob = () => {
     setEditJobTarget({ ...job, Status: currentStatus });
@@ -210,7 +202,7 @@ function JobDetails({
             size="sm"
             variant="outline"
             className="h-8 gap-1 cursor-pointer"
-            onClick={onMatchClick}
+            onClick={() => requestChat(`Match my resume to ${jobLabel}`)}
           >
             <Sparkles className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
@@ -224,11 +216,11 @@ function JobDetails({
             data-testid="generate-cover-letter-btn"
             disabled={!!coverLetterBlockedReason}
             title={coverLetterBlockedReason}
-            onClick={() => setCoverLetterOpen(true)}
+            onClick={() => requestChat(`Write a cover letter for ${jobLabel}`)}
           >
             <FileText className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              {currentCoverLetterId ? "Regenerate Letter" : "Cover Letter"}
+              {job.coverLetterId ? "Regenerate Letter" : "Cover Letter"}
             </span>
           </Button>
           <DropdownMenu>
@@ -405,13 +397,6 @@ function JobDetails({
           <CardFooter></CardFooter>
         </Card>
       )}
-      <GenerateCoverLetterSection
-        jobId={job?.id}
-        jobResumeId={job.resumeId}
-        open={coverLetterOpen}
-        triggerChange={setCoverLetterOpen}
-        onSaved={handleCoverLetterSaved}
-      />
       <AddJob
         jobStatuses={jobStatuses}
         companies={companies}
@@ -430,7 +415,7 @@ function JobDetails({
         onOpenChange={setDeleteAlertOpen}
         onDelete={onDeleteJob}
       />
-      {/* CLEAR CHAT BEFORE MATCH CONFIRM */}
+      {/* CLEAR CHAT BEFORE AN AI ACTION CONFIRM */}
       <AlertDialog
         open={showClearChatConfirm}
         onOpenChange={setShowClearChatConfirm}
@@ -439,14 +424,14 @@ function JobDetails({
           <AlertDialogHeader>
             <AlertDialogTitle>Clear the assistant conversation?</AlertDialogTitle>
             <AlertDialogDescription>
-              A job is waiting for your approval in the assistant. Starting a
-              match clears the conversation, and that job will not be saved.
+              A job is waiting for your approval in the assistant. Starting this
+              clears the conversation, and that job will not be saved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void startMatch()}>
-              Clear and match
+            <AlertDialogAction onClick={() => void startChat(pendingChatMessage)}>
+              Clear and continue
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

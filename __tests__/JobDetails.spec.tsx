@@ -1,7 +1,7 @@
 import React from "react";
 import JobDetails from "@/components/myjobs/JobDetails";
 import { JobResponse, Tag } from "@/models/job.model";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 vi.mock("next/navigation", () => ({
@@ -19,11 +19,6 @@ const chat = {
 
 vi.mock("@/components/agent/AgentChatProvider", () => ({
   useAgentChat: () => chat,
-}));
-
-vi.mock("@/components/myjobs/GenerateCoverLetterSection", () => ({
-  GenerateCoverLetterSection: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="cover-letter-sheet" /> : null,
 }));
 
 vi.mock("@/components/myjobs/NotesSection", () => ({
@@ -235,6 +230,11 @@ describe("JobDetails – Match with AI", () => {
 });
 
 describe("JobDetails cover letter action", () => {
+  beforeEach(() => {
+    chat.approvalPending = false;
+    vi.clearAllMocks();
+  });
+
   it("stays enabled when no resume is linked", () => {
     render(<JobDetails {...baseProps} job={makeJob({ resumeId: undefined })} />);
     expect(screen.getByTestId("generate-cover-letter-btn")).toBeEnabled();
@@ -260,14 +260,33 @@ describe("JobDetails cover letter action", () => {
     expect(screen.getByTestId("generate-cover-letter-btn")).toBeEnabled();
   });
 
-  it("opens the sheet on click", async () => {
+  it("opens the chat and asks for a letter naming the job", async () => {
     render(
       <JobDetails {...baseProps} job={makeJob({ resumeId: "resume-1" })} />,
     );
     await userEvent.click(screen.getByTestId("generate-cover-letter-btn"));
-    expect(screen.getByTestId("cover-letter-sheet")).toBeInTheDocument();
+    expect(chat.open).toHaveBeenCalled();
+    await waitFor(() => expect(chat.sendMessage).toHaveBeenCalled());
+    const sent = chat.sendMessage.mock.calls[0][0];
+    expect(sent.parts[0].text).toMatch(/cover letter/i);
+    expect(sent.parts[0].text).toContain("Frontend Developer");
+    expect(sent.parts[0].text).toContain("Acme Corp");
   });
 
+  it("asks before clearing a conversation with a pending approval", async () => {
+    chat.approvalPending = true;
+    render(
+      <JobDetails {...baseProps} job={makeJob({ resumeId: "resume-1" })} />,
+    );
+    await userEvent.click(screen.getByTestId("generate-cover-letter-btn"));
+    expect(
+      screen.getByText(/clear the assistant conversation/i),
+    ).toBeInTheDocument();
+    expect(chat.sendMessage).not.toHaveBeenCalled();
+  });
+
+  // Derived from the server prop, not local state: the chat saves the letter
+  // server-side and fires router.refresh().
   it("labels the action Regenerate when a letter is already linked", () => {
     render(
       <JobDetails
