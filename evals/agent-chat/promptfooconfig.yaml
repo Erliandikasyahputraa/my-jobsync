@@ -61,6 +61,7 @@ tests:
     vars:
       jobPosting: file://./fixtures/full-posting.txt
       userMessage: Add this job.
+      pageLocation: jobs-list
       expectCompany: Helio Systems
       expectTitle: Staff Data Engineer
     assert:
@@ -228,6 +229,7 @@ tests:
   - description: Match request - calls match_job
     vars:
       userMessage: How well do I match this job?
+      pageLocation: job
     assert:
       - type: javascript
         value: file://./assertions.ts:assertCallsMatchJob
@@ -238,6 +240,7 @@ tests:
   - description: Match button phrasing - calls match_job
     vars:
       userMessage: Match my resume to Senior Backend Engineer at Northwind Cloud
+      pageLocation: job
     assert:
       - type: javascript
         value: file://./assertions.ts:assertCallsMatchJob
@@ -246,6 +249,7 @@ tests:
   - description: Should-I-apply wording - still match_job
     vars:
       userMessage: Should I apply to this one?
+      pageLocation: job
     assert:
       - type: javascript
         value: file://./assertions.ts:assertCallsMatchJob
@@ -256,6 +260,7 @@ tests:
   - description: Both analyses at once - exactly one nested tool call
     vars:
       userMessage: Review my resume and tell me how well I match this job.
+      pageLocation: job
     assert:
       - type: javascript
         value: file://./assertions.ts:assertOneNestedCall
@@ -264,6 +269,7 @@ tests:
   - description: Cover letter request - calls generate_cover_letter
     vars:
       userMessage: Write me a cover letter for this job.
+      pageLocation: job
     assert:
       - type: javascript
         value: file://./assertions.ts:assertCallsCoverLetter
@@ -273,6 +279,7 @@ tests:
   - description: Cover letter button phrasing - calls generate_cover_letter
     vars:
       userMessage: Write a cover letter for Senior Backend Engineer at Northwind Cloud
+      pageLocation: job
     assert:
       - type: javascript
         value: file://./assertions.ts:assertCallsCoverLetter
@@ -282,6 +289,7 @@ tests:
   - description: Letter-of-application wording - still generate_cover_letter
     vars:
       userMessage: Can you draft a letter of application I can send with this?
+      pageLocation: job
     assert:
       - type: javascript
         value: file://./assertions.ts:assertCallsCoverLetter
@@ -291,6 +299,7 @@ tests:
   - description: Match and letter at once - exactly one nested tool call
     vars:
       userMessage: How well do I match this job, and write me a cover letter.
+      pageLocation: job
     assert:
       - type: javascript
         value: file://./assertions.ts:assertOneNestedCall

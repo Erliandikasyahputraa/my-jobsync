@@ -115,6 +115,30 @@ describe("agent chat system prompt", () => {
     );
   });
 
+  // The model replayed a turn-1 no_job result on turns 2 and 3, quoting the
+  // prompt's own "you cannot see which page" claim as its reason. The claim
+  // is false once every turn carries a page line, and it has to go.
+  it("no longer claims the model cannot see which page the user is on", () => {
+    expect(AGENT_CHAT_SYSTEM_PROMPT).not.toMatch(/cannot see which page/i);
+    expect(AGENT_TOOL_DESCRIPTIONS.match_job).not.toMatch(/cannot tell which page/i);
+    expect(AGENT_TOOL_DESCRIPTIONS.generate_cover_letter).not.toMatch(
+      /cannot tell which page/i,
+    );
+  });
+
+  it("tells the model an earlier no_job result is stale", () => {
+    expect(AGENT_CHAT_PROMPT_SECTIONS.capabilities).toMatch(/no_job/);
+    expect(AGENT_CHAT_PROMPT_SECTIONS.capabilities).toMatch(/earlier turn/i);
+    expect(AGENT_TOOL_DESCRIPTIONS.match_job).toMatch(/stale/i);
+    expect(AGENT_TOOL_DESCRIPTIONS.generate_cover_letter).toMatch(/stale/i);
+  });
+
+  // jobLookup returns no_job for an unresolvable id too, so the block saying
+  // a job is open and this turn's tool saying no_job is a reachable state.
+  it("still believes a no_job result from the current turn", () => {
+    expect(AGENT_CHAT_PROMPT_SECTIONS.capabilities).toMatch(/on this turn is current/i);
+  });
+
   // get_resume stays the on-ramp for reading a resume, but it is no longer
   // the review path — leaving the clause in gives the model two ways to
   // answer "review my resume" and it picks the wrong one.

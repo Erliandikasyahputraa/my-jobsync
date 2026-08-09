@@ -42,7 +42,6 @@ vi.mock("@/utils/ai.utils", () => ({
 
 import {
   AgentChatProvider,
-  pageContextFor,
   useAgentChat,
 } from "@/components/agent/AgentChatProvider";
 import { RightRailProvider, useRightRail } from "@/context/RightRailContext";
@@ -566,30 +565,5 @@ describe("AgentChatProvider", () => {
     currentPathname = "/dashboard/jobs";
     rerender(tree());
     expect(screen.getByTestId("panel-expanded").textContent).toBe("false");
-  });
-});
-
-describe("pageContextFor", () => {
-  it("extracts the resume id from a resume detail route", () => {
-    expect(pageContextFor("/dashboard/profile/resume/abc-123")).toEqual({
-      route: "/dashboard/profile/resume/abc-123",
-      resumeId: "abc-123",
-    });
-  });
-
-  it("extracts the job id from a job detail route", () => {
-    expect(pageContextFor("/dashboard/myjobs/job-9")).toEqual({
-      route: "/dashboard/myjobs/job-9",
-      jobId: "job-9",
-    });
-  });
-
-  it("omits both ids everywhere else", () => {
-    expect(pageContextFor("/dashboard/myjobs")).toEqual({
-      route: "/dashboard/myjobs",
-    });
-    expect(pageContextFor("/dashboard/profile/resume")).toEqual({
-      route: "/dashboard/profile/resume",
-    });
   });
 });

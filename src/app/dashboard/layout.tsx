@@ -45,7 +45,7 @@ export default async function RootLayout({
                 <GlobalActivityBanner />
                 {/* Container, not viewport, queries: the docked chat panel
                     shrinks this box without changing the viewport width. */}
-                <main className="@container/main flex-1 p-4 sm:px-6 sm:py-0">
+                <main className="@container/main flex-1 p-4 sm:px-4 sm:py-0">
                   <div className="items-start gap-4 md:gap-4 @3xl/main:grid @3xl/main:grid-cols-3">
                     {children}
                   </div>

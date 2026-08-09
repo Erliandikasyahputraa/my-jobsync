@@ -17,7 +17,11 @@ import { checkRateLimit } from "@/lib/ai/rate-limiter";
 import { TEMPERATURES } from "@/lib/ai/config";
 import { APP_CONSTANTS } from "@/lib/constants";
 import { AgentChatRequestSchema } from "@/models/agent.schema";
-import { AGENT_CHAT_SYSTEM_PROMPT, buildPasteContextMessage } from "@/lib/agent/prompt";
+import {
+  AGENT_CHAT_SYSTEM_PROMPT,
+  buildPageContextMessage,
+  buildPasteContextMessage,
+} from "@/lib/agent/prompt";
 import {
   resolvePastedText,
   stubConsumedPastes,
@@ -147,6 +151,13 @@ export const POST = async (req: NextRequest) => {
   // the last message is the assistant's, so nothing is re-injected — and the
   // full text never reaches the model on any turn.
   const lastIsUser = messages[messages.length - 1]?.role === "user";
+  // Whether a job is open is a per-turn fact, but a no_job tool result sits
+  // in history looking permanent — the model replayed one for two turns.
+  // Recency is what has to beat it, so this rides at the end of the messages
+  // rather than in the system prompt. A pasted posting still lands last.
+  if (lastIsUser) {
+    modelMessages.push({ role: "user", content: buildPageContextMessage(pageContext) });
+  }
   if (pastedText && lastIsUser) {
     const { block } = truncateForModel(pastedText);
     modelMessages.push({ role: "user", content: buildPasteContextMessage(block) });

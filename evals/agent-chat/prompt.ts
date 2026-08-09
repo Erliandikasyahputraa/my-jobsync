@@ -1,4 +1,4 @@
-import { AGENT_CHAT_SYSTEM_PROMPT, buildPasteContextMessage } from '../../src/lib/agent/prompt';
+import { AGENT_CHAT_SYSTEM_PROMPT, buildPageContextMessage, buildPasteContextMessage } from '../../src/lib/agent/prompt';
 import { APP_CONSTANTS } from '../../src/lib/constants';
 
 type Message = Record<string, unknown>;
@@ -44,6 +44,17 @@ export default function prompt({ vars }: { vars: Record<string, string> }): Mess
     { role: 'system', content: AGENT_CHAT_SYSTEM_PROMPT },
     { role: 'user', content: vars.userMessage },
   ];
+
+  // The route pushes this on every user turn, so a row without one measures
+  // a state the app cannot produce. Rows say where they are; default is a
+  // page with no job open.
+  const pageContext =
+    vars.pageLocation === 'job'
+      ? { route: '/dashboard/myjobs/job-eval-1', jobId: 'job-eval-1' }
+      : vars.pageLocation === 'jobs-list'
+        ? { route: '/dashboard/myjobs' }
+        : undefined;
+  messages.push({ role: 'user', content: buildPageContextMessage(pageContext) });
 
   if (vars.jobPosting) {
     const head = vars.jobPosting.slice(0, APP_CONSTANTS.AGENT_CHAT_PASTE_HEAD_CHARS);

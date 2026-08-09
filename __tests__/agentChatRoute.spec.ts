@@ -50,6 +50,7 @@ import { getModel } from "@/lib/ai/providers";
 import { getUserSettings } from "@/actions/userSettings.actions";
 import { saveChatConversation } from "@/actions/agentChat.actions";
 import { buildAgentTools } from "@/lib/agent/tools";
+import { buildPageContextMessage } from "@/lib/agent/prompt";
 import { APP_CONSTANTS } from "@/lib/constants";
 import {
   AGENT_CHAT_TERMINAL_TOOLS,
@@ -302,8 +303,10 @@ describe("POST /api/ai/chat", () => {
       parts: [{ type: "text", text: `hello ${i}` }],
     }));
     await POST(req({ messages: many }));
+    // windowMessages bounds the HISTORY. The route then injects the page line
+    // on every user turn (and the paste head on a paste turn) on top of it.
     expect(streamArgs().messages.length).toBeLessThanOrEqual(
-      APP_CONSTANTS.AGENT_CHAT_HISTORY_MESSAGES,
+      APP_CONSTANTS.AGENT_CHAT_HISTORY_MESSAGES + 1,
     );
   });
 
@@ -319,5 +322,56 @@ describe("POST /api/ai/chat", () => {
     await POST(req({ messages }));
     const sent = JSON.stringify(streamArgs().messages);
     expect(sent).not.toContain("<<<PASTED_");
+  });
+
+  // Defect A: the model replayed turn 1's no_job on turns 2 and 3 because
+  // nothing in the later requests said the page had changed.
+  it("tells the model which page the user is on, and sends no ids", async () => {
+    await POST(
+      req({
+        messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "match this" }] }],
+        pageContext: { route: "/dashboard/myjobs/job-9", jobId: "job-9" },
+      }),
+    );
+    const sent = streamArgs().messages;
+    expect(sent.at(-1).role).toBe("user");
+    expect(sent.at(-1).content).toBe(
+      buildPageContextMessage({ route: "/dashboard/myjobs/job-9", jobId: "job-9" }),
+    );
+    // The whole point of the fixed table: no client-supplied value travels.
+    expect(JSON.stringify(sent)).not.toContain("job-9");
+  });
+
+  it("keeps the pasted posting after the page line", async () => {
+    await POST(
+      req({
+        messages: [pasteMessage("MARKER posting")],
+        pageContext: { route: "/dashboard/myjobs" },
+      }),
+    );
+    const contents = streamArgs().messages.map((m: any) =>
+      typeof m.content === "string" ? m.content : JSON.stringify(m.content),
+    );
+    const pageIndex = contents.findIndex((c: string) =>
+      c.includes("<page-context>"),
+    );
+    const pasteIndex = contents.findIndex((c: string) => c.includes("MARKER posting"));
+    expect(pageIndex).toBeGreaterThan(-1);
+    expect(pasteIndex).toBeGreaterThan(pageIndex);
+  });
+
+  // The approval-resume POST finishes a turn the user already spoke for.
+  it("does not re-announce the page when the last message is the assistant's", async () => {
+    await POST(
+      req({
+        messages: [
+          { id: "m1", role: "user", parts: [{ type: "text", text: "add this job" }] },
+          { id: "m2", role: "assistant", parts: [{ type: "text", text: "on it" }] },
+        ],
+        pageContext: { route: "/dashboard/myjobs/job-9", jobId: "job-9" },
+      }),
+    );
+    const sent = JSON.stringify(streamArgs().messages);
+    expect(sent).not.toContain("<page-context>");
   });
 });

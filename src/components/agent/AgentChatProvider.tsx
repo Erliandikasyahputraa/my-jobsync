@@ -20,6 +20,7 @@ import {
   type UIMessage,
 } from "ai";
 import { hasPendingApproval, stubConsumedPastes } from "@/lib/agent/paste";
+import { pageContextFor } from "@/lib/agent/pageContext";
 import { useRightRail } from "@/context/RightRailContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
@@ -58,12 +59,6 @@ type AgentChatValue = ReturnType<typeof useAgentChatValue>;
 
 const AgentChatContext = createContext<AgentChatValue | null>(null);
 
-// The routes that identify a resource the chat can read. Derived from the
-// pathname rather than plumbed through props so no page has to know the
-// panel exists.
-const RESUME_ROUTE = /^\/dashboard\/profile\/resume\/([^/]+)$/;
-const JOB_ROUTE = /^\/dashboard\/myjobs\/([^/]+)$/;
-
 // The completed add_job writes in a transcript, by tool call id. Name-checked
 // on purpose: created is add_job's field, and another tool reusing it is not a
 // job write.
@@ -78,16 +73,6 @@ function createdJobToolCallIds(messages: UIMessage[]): string[] {
     }
   }
   return ids;
-}
-
-export function pageContextFor(pathname: string): PageContext {
-  const resumeId = pathname.match(RESUME_ROUTE)?.[1];
-  const jobId = pathname.match(JOB_ROUTE)?.[1];
-  return {
-    route: pathname,
-    ...(resumeId ? { resumeId } : {}),
-    ...(jobId ? { jobId } : {}),
-  };
 }
 
 function useAgentChatValue(initialMessages: UIMessage[]) {
