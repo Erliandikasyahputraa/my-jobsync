@@ -28,6 +28,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/actions/agentChat.actions", () => ({
   clearChatConversation: vi.fn(async () => ({ success: true })),
+  saveChatConversation: vi.fn(async () => ({ success: true })),
 }));
 vi.mock("@/actions/userSettings.actions", () => ({
   getUserSettings: vi.fn(async () => ({
@@ -46,7 +47,10 @@ import {
 } from "@/components/agent/AgentChatProvider";
 import { RightRailProvider, useRightRail } from "@/context/RightRailContext";
 import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
-import { clearChatConversation } from "@/actions/agentChat.actions";
+import {
+  clearChatConversation,
+  saveChatConversation,
+} from "@/actions/agentChat.actions";
 import { getUserSettings } from "@/actions/userSettings.actions";
 import { checkOllamaConnection } from "@/utils/ai.utils";
 
@@ -67,6 +71,9 @@ function Probe() {
       >
         sendMessage
       </button>
+      <button onClick={() => c.seedExchange("Add a job posting", "canned")}>
+        seedExchange
+      </button>
       <button onClick={c.clearQueued}>clearQueued</button>
       <span data-testid="queued">
         {c.queued ? (c.queued.parts[0] as any).text : ""}
@@ -78,6 +85,7 @@ function Probe() {
       <span data-testid="composer-nonce">{c.composerNonce}</span>
       <span data-testid="panel-expanded">{String(c.isPanelExpanded)}</span>
       <span data-testid="review-stream">{c.toolStreams["rv1"] ?? ""}</span>
+      <span data-testid="job-writes">{c.jobWrites}</span>
     </div>
   );
 }
@@ -120,6 +128,28 @@ describe("AgentChatProvider", () => {
   it("seeds useChat with the persisted transcript", () => {
     setup([{ id: "m1", role: "user", parts: [{ type: "text", text: "hi" }] }]);
     expect(chatInit().messages).toHaveLength(1);
+  });
+
+  // The canned exchange never reaches the route, so it is the one pair that
+  // has to persist itself or it disappears on the next reload.
+  it("appends a seeded exchange to the transcript and persists it", async () => {
+    chat.messages = [{ id: "m1", role: "user", parts: [] }];
+    setup();
+    await userEvent.click(screen.getByText("seedExchange"));
+
+    expect(chat.sendMessage).not.toHaveBeenCalled();
+    const next = chat.setMessages.mock.calls[0][0];
+    expect(next).toHaveLength(3);
+    expect(next[1]).toMatchObject({
+      role: "user",
+      parts: [{ type: "text", text: "Add a job posting" }],
+    });
+    expect(next[2]).toMatchObject({
+      role: "assistant",
+      parts: [{ type: "text", text: "canned" }],
+    });
+    expect(next[1].id).not.toBe(next[2].id);
+    expect(saveChatConversation).toHaveBeenCalledWith(next);
   });
 
   it("wires sendAutomaticallyWhen, without which an approved tool never executes", () => {
@@ -416,6 +446,40 @@ describe("AgentChatProvider", () => {
       },
     ],
   } as any;
+
+  // add_job's approval splits the call and the execution across two POSTs, so
+  // stopWhen cannot end the second one — the model narrates the write in a
+  // full extra generation. Waiting for onFinish left the list stale for it.
+  it("announces a job write as soon as add_job returns, mid-stream", async () => {
+    const { rerender } = setup();
+    expect(screen.getByTestId("job-writes").textContent).toBe("0");
+
+    chat.messages = [createdToolMessage];
+    await act(async () => {
+      rerender(tree());
+    });
+
+    expect(screen.getByTestId("job-writes").textContent).toBe("1");
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    // The completed part stays in the transcript for every later token, so
+    // without the tool-call-id guard the prose would re-announce it.
+    chat.messages = [createdToolMessage, { id: "a4", role: "assistant", parts: [] }];
+    await act(async () => {
+      rerender(tree());
+    });
+    expect(screen.getByTestId("job-writes").textContent).toBe("1");
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  // The panel is mounted with the persisted conversation on every page load.
+  it("does not announce a job write seeded from the persisted transcript", async () => {
+    chat.messages = [createdToolMessage];
+    setup([createdToolMessage]);
+
+    expect(screen.getByTestId("job-writes").textContent).toBe("0");
+    expect(refresh).not.toHaveBeenCalled();
+  });
 
   // The route stubs only the copy it writes to the DB. Without the client
   // doing the same to its own transcript, the next thing the user types

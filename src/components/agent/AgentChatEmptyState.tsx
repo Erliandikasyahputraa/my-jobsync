@@ -2,24 +2,30 @@
 
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { useAgentChat } from "@/components/agent/AgentChatProvider";
+import { AGENT_ADD_JOB_INTRO } from "@/lib/agent/prompt";
 
-// All send immediately on click — none need editing first. "Add this
-// job posting" has no company/title yet, so the model asks the user to
-// paste it rather than calling add_job. "Match a job" and "Generate cover
-// letter" have no page context here, so the tools reply with a graceful
-// "no_job" result telling the user to open a job's page first.
+// None need editing first, so they act on click. "Review resume" runs a real
+// turn. "Match a job" and "Generate cover letter" have no page context here,
+// so the tools reply with a graceful "no_job" result telling the user to open
+// a job's page first. ADD_JOB is the one whose answer is knowable without the
+// model — see AGENT_ADD_JOB_INTRO.
+const ADD_JOB = "Add a job posting";
 const EXAMPLES = [
-  "Add a job posting",
+  ADD_JOB,
   "Review resume",
   "Match a job",
   "Generate cover letter",
 ];
 
 export function AgentChatEmptyState() {
-  const { sendMessage, preflight } = useAgentChat();
+  const { sendMessage, seedExchange, preflight } = useAgentChat();
 
   const handleClick = (example: string) => {
     if (!preflight.ok) return;
+    if (example === ADD_JOB) {
+      seedExchange(example, AGENT_ADD_JOB_INTRO);
+      return;
+    }
     void sendMessage({ parts: [{ type: "text", text: example }] });
   };
 

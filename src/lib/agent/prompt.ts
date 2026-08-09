@@ -17,6 +17,23 @@ export const AGENT_CHAT_SYSTEM_PROMPT = [
   AGENT_CHAT_PROMPT_SECTIONS.safety,
 ].join("\n\n");
 
+// The empty state's add-job suggestion answers with this instead of spending
+// a turn on the model. That click carries no company, title or posting, so
+// add_job is unreachable and the capabilities section above leaves exactly
+// one legal reply — ask for all three. Kept here so it stays in step with
+// that section's required-fields wording.
+export const AGENT_ADD_JOB_INTRO = [
+  "Happy to add it. Paste the job posting here and I'll pull the details out of it.",
+  "",
+  "If you don't have the posting text, tell me:",
+  "",
+  "- **Company** — who is hiring",
+  "- **Job title** — the role they are hiring for",
+  "- **What the role involves** — one sentence is enough",
+  "",
+  "You will see everything I extracted on a confirmation card before anything is saved.",
+].join("\n");
+
 // Prompt surface, not documentation — kept beside the prompt so evals assert
 // against the exact string the route registers. Mirrors
 // src/lib/mcp/toolDescriptions.ts.

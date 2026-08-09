@@ -13,6 +13,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
+  generateId,
   getToolName,
   isToolUIPart,
   lastAssistantMessageIsCompleteWithApprovalResponses,
@@ -24,7 +25,10 @@ import { useSidebar } from "@/context/SidebarContext";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { APP_CONSTANTS } from "@/lib/constants";
 import { toastInfo } from "@/lib/toast";
-import { clearChatConversation } from "@/actions/agentChat.actions";
+import {
+  clearChatConversation,
+  saveChatConversation,
+} from "@/actions/agentChat.actions";
 import { getUserSettings } from "@/actions/userSettings.actions";
 import { checkOllamaConnection } from "@/utils/ai.utils";
 import { AiProvider } from "@/models/ai.model";
@@ -59,6 +63,22 @@ const AgentChatContext = createContext<AgentChatValue | null>(null);
 // panel exists.
 const RESUME_ROUTE = /^\/dashboard\/profile\/resume\/([^/]+)$/;
 const JOB_ROUTE = /^\/dashboard\/myjobs\/([^/]+)$/;
+
+// The completed add_job writes in a transcript, by tool call id. Name-checked
+// on purpose: created is add_job's field, and another tool reusing it is not a
+// job write.
+function createdJobToolCallIds(messages: UIMessage[]): string[] {
+  const ids: string[] = [];
+  for (const message of messages) {
+    for (const part of message.parts ?? []) {
+      if (!isToolUIPart(part) || part.state !== "output-available") continue;
+      if (getToolName(part) !== "add_job") continue;
+      if ((part.output as AgentAddJobResult | undefined)?.created !== true) continue;
+      ids.push(part.toolCallId);
+    }
+  }
+  return ids;
+}
 
 export function pageContextFor(pathname: string): PageContext {
   const resumeId = pathname.match(RESUME_ROUTE)?.[1];
@@ -119,6 +139,15 @@ function useAgentChatValue(initialMessages: UIMessage[]) {
   // cannot reach it — pages that hold their own rows subscribe to this counter.
   const [jobWrites, setJobWrites] = useState(0);
 
+  // Which writes have already been announced. Seeded from the persisted
+  // transcript so a yesterday's add_job in initialMessages is not mistaken for
+  // one that just landed; lazily, because the effect below runs per token and
+  // the scan is not worth repeating.
+  const announcedJobWritesRef = useRef<Set<string> | null>(null);
+  if (announcedJobWritesRef.current === null) {
+    announcedJobWritesRef.current = new Set(createdJobToolCallIds(initialMessages));
+  }
+
   const chat = useChat({
     messages: initialMessages,
     transport: new DefaultChatTransport({
@@ -141,13 +170,7 @@ function useAgentChatValue(initialMessages: UIMessage[]) {
       if (isAbort || isError) return;
 
       const finishedParts = message?.parts ?? [];
-      const wrote = finishedParts.some((part) => {
-        if (!isToolUIPart(part) || part.state !== "output-available") return false;
-        // Name-checked for the same reason findConsumingWrite is: created is
-        // add_job's field, and another tool reusing it is not a job write.
-        if (getToolName(part) !== "add_job") return false;
-        return (part.output as AgentAddJobResult | undefined)?.created === true;
-      });
+      const wrote = createdJobToolCallIds(message ? [message] : []).length > 0;
       // Any nested tool that saves server-side leaves the page behind the
       // panel stale — the saved review card, the job's match score, or the
       // job's cover-letter button flipping to "Regenerate Letter".
@@ -162,17 +185,33 @@ function useAgentChatValue(initialMessages: UIMessage[]) {
       // it one user message later, and the next thing the user types calls
       // add_job again on the job they just saved. It self-corrected only on
       // reload, when the stubbed row re-seeded the transcript.
-      if (wrote) {
-        chat.setMessages((prev) => stubConsumedPastes(prev));
-        setJobWrites((n) => n + 1);
-      }
+      // Stays here rather than in the effect below: its deadline is the next
+      // POST, and writing to useChat's store mid-stream risks being clobbered.
+      if (wrote) chat.setMessages((prev) => stubConsumedPastes(prev));
 
-      // Unconditional: an RSC refresh on an irrelevant page is a wasted
-      // request, not a bug. A stale jobs list, a stale saved review or a
-      // stale match score right after watching one land reads as one.
-      if (wrote || generated) router.refresh();
+      // Only the nested tools. A job write refreshes the moment add_job
+      // returns — see the effect below. An RSC refresh on an irrelevant page
+      // is a wasted request, not a bug; a stale saved review or match score
+      // right after watching one land reads as one.
+      if (generated) router.refresh();
     },
   });
+
+  // add_job is approval-gated, so the model calls it on one POST and the SDK
+  // executes it on the next — where stopWhen's hasToolCall("add_job") never
+  // matches, and the model runs a whole extra generation narrating the write.
+  // Announcing in onFinish left the jobs list stale for the length of that
+  // generation; the output part is on the client the moment the tool returns.
+  useEffect(() => {
+    const announced = announcedJobWritesRef.current!;
+    const landed = createdJobToolCallIds(chat.messages).filter(
+      (id) => !announced.has(id),
+    );
+    if (landed.length === 0) return;
+    landed.forEach((id) => announced.add(id));
+    setJobWrites((n) => n + 1);
+    router.refresh();
+  }, [chat.messages, router]);
 
   const streamingRef = useRef(false);
   streamingRef.current =
@@ -300,6 +339,31 @@ function useAgentChatValue(initialMessages: UIMessage[]) {
     [approvalPending, dispatch],
   );
 
+  // A canned exchange, not a model turn: the caller supplies both halves and
+  // nothing is POSTed. Persisted here because the transcript only reaches the
+  // DB when the route runs, and a pair that vanishes on reload while every
+  // real turn survives reads as a bug.
+  const seedExchange = useCallback(
+    (userText: string, assistantText: string) => {
+      const next: UIMessage[] = [
+        ...chat.messages,
+        {
+          id: generateId(),
+          role: "user",
+          parts: [{ type: "text", text: userText }],
+        },
+        {
+          id: generateId(),
+          role: "assistant",
+          parts: [{ type: "text", text: assistantText }],
+        },
+      ];
+      chat.setMessages(next);
+      void saveChatConversation(next);
+    },
+    [chat],
+  );
+
   // Both conditions are load-bearing. approvalPending flips false at the same
   // instant sendAutomaticallyWhen fires the POST that executes the approved
   // tool, so releasing on that alone would race it and cut the tool off
@@ -331,6 +395,7 @@ function useAgentChatValue(initialMessages: UIMessage[]) {
     error: chat.error,
     clearError: chat.clearError,
     sendMessage,
+    seedExchange,
     stop: chat.stop,
     regenerate,
     addToolApprovalResponse: chat.addToolApprovalResponse,
