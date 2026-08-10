@@ -5,6 +5,7 @@
 <p align="center">
   <a href="https://demo.jobsync.ca">Live Demo</a> ·
   <a href="#quick-start">Quick Start</a> ·
+  <a href="#ai-assistant-in-app-chat">AI Assistant</a> ·
   <a href="#mcp-server-ai-agent-integration">MCP Setup</a>
 </p>
 
@@ -14,7 +15,7 @@
   <img src="https://img.shields.io/badge/self--hosted-Docker-blue" alt="Self-hosted with Docker">
 </p>
 
-JobSync is a free, open-source companion for your job search: track applications, manage and export resumes, and run AI-powered resume reviews, job matching, generate cover letter — all self-hosted on your own server, so your data stays under your control. AI features can run entirely locally via Ollama or through your choice of cloud provider, and JobSync's built-in MCP server lets AI agents like Claude Desktop add jobs and interview questions straight from your chat.
+JobSync is a free, open-source companion for your job search: track applications, manage and export resumes, and ask a built-in AI assistant to review a resume, match it against a job, write a cover letter, or add a job from a posting you paste in — all self-hosted on your own server, so your data stays under your control. AI features can run entirely locally via Ollama or through your choice of cloud provider, and JobSync's built-in MCP server lets AI agents like Claude Desktop add jobs and interview questions straight from your chat.
 
 ![App Snapshot](./screenshots/jobsync-dashboard.png?raw=true "Jobsync dashboard")
 
@@ -31,10 +32,7 @@ JobSync is a free, open-source companion for your job search: track applications
 
 - **Task & Activity Management:** Manage tasks, track activities linked with tasks including time tracking.
 
-- **AI Assistant:** Leverage the power of AI to improve your resumes and match with jobs. Get personalized job matching with scoring to identify the best opportunities tailored to your profile, and generate a tailored cover letter from a job description and resume in one click.
-
-  ![AI Resume Review](./screenshots/jobsync-ai.gif)
-  ![AI Job Match](./screenshots/jobsync-ai-jobmatch.gif)
+- **AI Assistant:** A chat panel that stays docked beside whatever page you're on. Ask it to review a resume, score how well it matches the job you're viewing, write a tailored cover letter, or add a job straight from a posting you paste in — it asks for your confirmation before saving anything. See [Features in Detail](#ai-assistant-in-app-chat) below.
 
 - **AI Agent Integration (MCP):** Connect AI agents like Claude Desktop via a built-in MCP server to add job applications and Question Bank entries directly from your chat, with your approval. When a job description is substantial enough, the agent can also analyze it against your default resume and save a job match score right from the chat.
 
@@ -80,6 +78,28 @@ On **Windows**, run the PowerShell equivalent from the project directory instead
 >Note: If you are updating in a homelab environment, edit `NEXTAUTH_URL` in your `.env` file to use your server IP address instead of `localhost`. See `.env.example` for the expected format.
 
 ## Features in Detail
+
+### AI Assistant (In-App Chat)
+
+All of JobSync's AI features live in one place: a chat panel that docks to the side of the app instead of taking it over, so the page you were on stays visible and usable while the assistant works.
+
+Open it from the **AI Assistant** button in the header, or let the app open it for you — the **Review** button on a resume and the **Match with AI** and **Cover Letter** buttons on a job all start the matching request in the panel.
+
+What you can ask for:
+
+- **Resume review** — a full review of any of your resumes, with scores and written feedback, saved to the resume so you can come back to it.
+- **Job match** — how well one of your resumes fits the job you're currently viewing, with a match score, a recommendation, and a write-up, saved to the job. Open the job first; the assistant scores the job on the page.
+- **Cover letter** — a tailored letter for the job you're viewing, written from your resume and the job description (and any guidance from an earlier match), saved to your documents. Ask again and you get a new letter rather than losing the old one.
+- **Add a job from a posting** — paste a job posting into the chat and ask it to add the job. It picks out the company, title, location, salary, tags and the rest, and shows you all of it on a confirmation card before anything is written. The description is saved exactly as you pasted it, not as a summary. Nothing reaches your database until you press Confirm.
+
+The reviews, matches and letters are the same analyses the dedicated panels used to produce — the chat is a new way in, not a lighter-weight version.
+
+The assistant is deliberately narrow about what it can see: it reads your resumes and the single job you're looking at, and nothing else. It can't list or search your jobs, and it can't see tasks or activities. Pasted postings are also treated as untrusted text, so instructions hidden inside a posting can't make the assistant act on your data.
+
+Pick a model under **Settings > AI Settings** before using the panel — it needs one that supports tool calling, and it will tell you rather than guessing if none is set. See [known-good models](#supported-ai-model-providers) for the ones that have been tested, including a fully local option.
+
+![AI Resume Review](./screenshots/jobsync-ai.gif)
+![AI Job Match](./screenshots/jobsync-ai-jobmatch.gif)
 
 ### PDF Resume Export
 
@@ -193,7 +213,9 @@ We welcome contributions! Please read our [Contributing Guidelines](./CONTRIBUTI
 
 API keys for all cloud providers can be configured in **Settings > AI Settings** after signing in. Ollama is selected as the default provider.
 
-> **Note:** Selected models must support **structured output** for AI features to work correctly.
+> **Note:** Selected models must support **structured output** and **tool calling** for AI features to work correctly — the AI Assistant panel works by calling tools, so a model without tool support will reply with text instead of doing anything.
+
+**Known-good models.** The AI Assistant has been tested end to end with `qwen3.5:9b` on Ollama (fully local), `deepseek-v4-flash`, and OpenAI `gpt-4.1`. Other tool-calling models should work, but these are the ones exercised against the full set of assistant features.
 
 <details>
 <summary><strong>Ollama (Local)</strong></summary>
@@ -202,7 +224,7 @@ Works with [Ollama](https://ollama.com) to run AI models locally on your machine
 
 - Make sure Ollama is installed and running on the same system
 - AI settings will show a list of available models based on what you have downloaded in Ollama
-- **Recommended:** Increase the Ollama context length from the default 4k to 16k — this mainly helps automated job matching avoid truncating longer resume/job description prompts; increasing it further doesn't necessarily improve results
+- **Recommended:** Increase the Ollama context length from the default 4k to 16k — this helps automated job matching avoid truncating longer resume/job description prompts. The AI Assistant, resume review, job match and cover letter features aren't affected: they ask Ollama for the context size they need on every call, so raising this setting won't change them. Don't raise it much further either — a very large default costs you noticeably slower responses for no benefit
 - No API key required — runs entirely on your hardware
 - If you are running jobsync on a homelab server, you can expose ollama to network from Ollama settings on your local machine. Also make sure your ollama base url is pointed to your local system IP under API keys section of settings.
 
