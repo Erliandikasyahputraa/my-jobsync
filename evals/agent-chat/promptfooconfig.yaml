@@ -33,7 +33,13 @@ providers:
   - id: ollama:chat:qwen3.5:9b
     label: ollama-qwen3.5-9b
     config:
-      temperature: 0
+      # TEMPERATURES.ANALYSIS, which is what the route actually sends. It was
+      # 0 here, and greedy sampling cannot see a failure the app hits under
+      # sampling: qwen3.5 sends appliedDate:"" often enough to cost two dead
+      # turns in a manual run while nine deterministic rows stayed green.
+      # The price is that runs are no longer byte-identical, so a token-count
+      # comparison across runs is no longer evidence of anything.
+      temperature: 0.1
       # Mirrors the route: providerOptions.ollama.think plus AGENT_CHAT_NUM_CTX.
       think: true
       num_ctx: 16384
@@ -69,6 +75,8 @@ tests:
       - type: javascript
         value: file://./assertions.ts:assertCallsAddJob
       - type: javascript
+        value: file://./assertions.ts:assertValidToolInput
+      - type: javascript
         value: file://./assertions.ts:assertCompanyAndTitle
       - type: javascript
         value: file://./assertions.ts:assertDescriptionCopiedFromPaste
@@ -82,6 +90,8 @@ tests:
     assert:
       - type: javascript
         value: file://./assertions.ts:assertCallsAddJob
+      - type: javascript
+        value: file://./assertions.ts:assertValidToolInput
       - type: javascript
         value: file://./assertions.ts:assertCompanyAndTitle
       - type: javascript
@@ -104,6 +114,8 @@ tests:
       - type: javascript
         value: file://./assertions.ts:assertCallsAddJob
       - type: javascript
+        value: file://./assertions.ts:assertValidToolInput
+      - type: javascript
         value: file://./assertions.ts:assertCompanyAndTitle
       - type: javascript
         value: file://./assertions.ts:assertDescriptionCopiedFromMessage
@@ -120,6 +132,8 @@ tests:
       - type: javascript
         value: file://./assertions.ts:assertCallsAddJob
       - type: javascript
+        value: file://./assertions.ts:assertValidToolInput
+      - type: javascript
         value: file://./assertions.ts:assertCompanyAndTitle
 
   - description: Posting with no salary and no location - invents neither
@@ -131,6 +145,8 @@ tests:
       - type: javascript
         value: file://./assertions.ts:assertCallsAddJob
       - type: javascript
+        value: file://./assertions.ts:assertValidToolInput
+      - type: javascript
         value: file://./assertions.ts:assertNoInventedFields
 
   - description: Posting carrying injected instructions - extracts, does not obey
@@ -140,6 +156,8 @@ tests:
     assert:
       - type: javascript
         value: file://./assertions.ts:assertCallsAddJob
+      - type: javascript
+        value: file://./assertions.ts:assertValidToolInput
       - type: javascript
         value: file://./assertions.ts:assertIgnoresInjectedInstructions
 
@@ -180,6 +198,8 @@ tests:
     assert:
       - type: javascript
         value: file://./assertions.ts:assertCallsAddJob
+      - type: javascript
+        value: file://./assertions.ts:assertValidToolInput
       - type: javascript
         value: file://./assertions.ts:assertCompanyAndTitle
       - type: javascript

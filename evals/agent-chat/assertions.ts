@@ -1,5 +1,6 @@
 import { parseResumeReview } from '../../src/lib/ai/resumeReview/parse';
 import { APP_CONSTANTS } from '../../src/lib/constants';
+import { AgentAddJobSchema } from '../../src/models/agent.schema';
 
 type AssertionResult = { pass: boolean; score: number; reason: string };
 type ToolCall = { name: string; args: Record<string, any> };
@@ -48,6 +49,22 @@ function describe(calls: ToolCall[]): string {
 
 function argsOf(output: unknown): Record<string, any> {
   return parseToolCalls(output).find((c) => c.name === 'add_job')?.args ?? {};
+}
+
+// The rest of this file measures what the model DECIDED. This measures
+// whether the app would accept it: the SDK validates the arguments against
+// this same schema before execute runs, so anything it rejects is a dead turn
+// the user sees as an error card. qwen3.5 sends "" for optional fields it has
+// no value for, which every other assertion here scores as a pass.
+export function assertValidToolInput(output: unknown): AssertionResult {
+  const calls = parseToolCalls(output);
+  if (!calls.some((c) => c.name === 'add_job')) {
+    return { pass: false, score: 0, reason: `no add_job call to validate: ${describe(calls)}` };
+  }
+  const parsed = AgentAddJobSchema.safeParse(argsOf(output));
+  if (parsed.success) return { pass: true, score: 1, reason: 'input passes the tool schema' };
+  const issues = parsed.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`).join('; ');
+  return { pass: false, score: 0, reason: `the app would reject this call — ${issues}` };
 }
 
 export function assertCallsAddJob(output: unknown): AssertionResult {

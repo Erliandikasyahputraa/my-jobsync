@@ -59,6 +59,10 @@ describe("agent chat system prompt", () => {
     // No instruction to omit, and nothing for the model to weigh up.
     expect(AGENT_CHAT_PROMPT_SECTIONS.paste).not.toMatch(/omit the field|omit this field|omit it entirely/i);
     expect(AGENT_CHAT_PROMPT_SECTIONS.paste).not.toContain("<<<PASTED_");
+    // Say what to send, never what the app does with it. Told the app
+    // substitutes values, qwen3.5 generalised that to every optional field
+    // and filled all 16k of num_ctx deciding which ones it fills in.
+    expect(AGENT_CHAT_PROMPT_SECTIONS.paste).not.toMatch(/the app (replaces|supplies|already has)/i);
   });
 
   // The description the model reads is the other half of the same rule; the
@@ -67,6 +71,7 @@ describe("agent chat system prompt", () => {
     const described = AgentAddJobSchema.shape.jobDescription.description ?? "";
     expect(described).toMatch(/always include this field/i);
     expect(described).not.toMatch(/omit/i);
+    expect(described).not.toMatch(/the app (replaces|supplies|already has)/i);
   });
 
   it("names the approval verbs the UI actually uses", () => {
