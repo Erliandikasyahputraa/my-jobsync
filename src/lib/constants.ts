@@ -155,7 +155,15 @@ export const APP_CONSTANTS = {
   // tool schemas, a paste head and history. Raising the shared value would
   // change review/match latency.
   AGENT_CHAT_NUM_CTX: 16384,
-  AGENT_CHAT_PASTE_THRESHOLD: 1500,
+  // Below this a paste stays inline text and no chip is made, so add_job
+  // never receives it as pastedText. 1500 sat above a real Indeed posting
+  // (1368 chars): it arrived as plain text, the model still read it as a
+  // paste and omitted jobDescription, and the record was saved from the
+  // model's paraphrase. Sized to clear a terse posting, not a typed sentence.
+  // Not lower: a chip outranks the model's jobDescription in both add_job and
+  // the approval card, so an unrelated paste this side of the threshold gets
+  // saved as the description.
+  AGENT_CHAT_PASTE_THRESHOLD: 1000,
   AGENT_CHAT_PASTE_HEAD_CHARS: 2000,
   AGENT_CHAT_PASTE_MAX_CHARS: 120_000,
   // A paste is spliced into add_job / injected into the prompt only while it

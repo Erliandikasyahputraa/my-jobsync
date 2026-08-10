@@ -1,11 +1,12 @@
 description: Agent chat tool-loop regression tests — does the configured model drive add_job and get_resume well enough to ship
 
-# These rows exercise the CHAT surface, not MCP. Both tools are declared from
-# the same Zod schemas the /api/ai/chat route registers, and
-# prompt.ts injects a head-truncated paste block exactly as the route does —
-# so "did the model re-emit the description it was told to omit" is measurable
-# here. No route, no database, no approval gate: the model chooses and
-# promptfoo asserts on the raw tool_calls.
+# These rows exercise the CHAT surface, not MCP. All five tools are declared
+# from the same Zod schemas and descriptions the /api/ai/chat route registers,
+# and prompt.ts assembles each turn exactly as the route does — page-context
+# block at the tail, paste head after it — so "did the model copy the posting
+# it was shown into jobDescription" is measurable here. No route, no database,
+# no approval gate: the model chooses and promptfoo asserts on the raw
+# tool_calls.
 #
 # There is no "configured default" for this table to bless. The chat 503s when
 # settings.ai.model is unset, so what this measures is which model the user
@@ -57,7 +58,7 @@ defaultTest:
         max_tokens: 4096
 
 tests:
-  - description: Full posting, everything in the head - extracts and omits the description
+  - description: Full posting, everything in the head - extracts and copies the description
     vars:
       jobPosting: file://./fixtures/full-posting.txt
       userMessage: Add this job.
@@ -70,7 +71,7 @@ tests:
       - type: javascript
         value: file://./assertions.ts:assertCompanyAndTitle
       - type: javascript
-        value: file://./assertions.ts:assertNoDescriptionOnPastePath
+        value: file://./assertions.ts:assertDescriptionCopiedFromPaste
 
   - description: Shared backend posting - same three assertions, different wording
     vars:
@@ -84,7 +85,28 @@ tests:
       - type: javascript
         value: file://./assertions.ts:assertCompanyAndTitle
       - type: javascript
-        value: file://./assertions.ts:assertNoDescriptionOnPastePath
+        value: file://./assertions.ts:assertDescriptionCopiedFromPaste
+
+  # The path the delimited rows above cannot measure. A posting under
+  # AGENT_CHAT_PASTE_THRESHOLD makes no chip, so it arrives as ordinary message
+  # text and there is no pastedText for execute to splice in: what the model
+  # puts in jobDescription is what the record keeps, and an omission here is
+  # the failure that lowering the threshold to 1000 was meant to stop being
+  # routine. 861 chars, so it stays inline as long as the threshold does.
+  - description: Sub-threshold posting, inline not pasted - copies it into jobDescription
+    vars:
+      userMessage: Add this job.
+      inlinePosting: file://./fixtures/short-posting.txt
+      pageLocation: jobs-list
+      expectCompany: Marlowe Payments
+      expectTitle: Integration Engineer
+    assert:
+      - type: javascript
+        value: file://./assertions.ts:assertCallsAddJob
+      - type: javascript
+        value: file://./assertions.ts:assertCompanyAndTitle
+      - type: javascript
+        value: file://./assertions.ts:assertDescriptionCopiedFromMessage
 
   # Documents the accepted loss rather than asserting against it: the salary
   # sits at char 3048, past the 2000-char head, so it is not recoverable here.
@@ -121,16 +143,29 @@ tests:
       - type: javascript
         value: file://./assertions.ts:assertIgnoresInjectedInstructions
 
-  - description: Title-only stub - adds it without fabricating a salary
+  # 96 chars, so the composer never makes a chip for it: it arrives inline,
+  # carrying a company and a title but no description of the role at all.
+  # add_job is unreachable — execute rejects a call with no description, and
+  # needsApproval is false for it, so the model does not even spend a
+  # confirmation card learning that. The only correct turn is to ask, and the
+  # capabilities clause says to ask for all three fields together.
+  - description: Title-only stub, no description - asks for all three
     vars:
-      jobPosting: file://../mcp-tools/fixtures/title-only.txt
       userMessage: Save this.
-      forbiddenFields: salaryRange
+      inlinePosting: file://../mcp-tools/fixtures/title-only.txt
     assert:
       - type: javascript
-        value: file://./assertions.ts:assertCallsAddJob
-      - type: javascript
-        value: file://./assertions.ts:assertNoInventedFields
+        value: file://./assertions.ts:assertNoToolCall
+      # Scoped to what the clause defends rather than to its literal reading:
+      # asking only for the piece that is missing is better UX than re-asking
+      # for a company and title the message already gave, and the regression
+      # the clause exists for is the description being dropped from the ask or
+      # offered as optional.
+      - type: llm-rubric
+        value: >-
+          The reply asks the user for the posting text or a description of what
+          the role involves, and treats it as required rather than optional. It
+          does not claim to have saved or added the job.
 
   # The typed path's inverse: with no paste there is nothing to splice, so the
   # description has to come from the model or the tool stores nothing.
@@ -149,6 +184,25 @@ tests:
         value: file://./assertions.ts:assertCompanyAndTitle
       - type: javascript
         value: file://./assertions.ts:assertDescriptionSupplied
+
+  # The step after Confirm. The user has already pressed it and the row starts
+  # from the write, so any mention of a confirmation card here is the model
+  # asking them to do again what they just did — which is what the capabilities
+  # clause about a created result forbids. Note there is no page-context block
+  # on this row: the route only pushes one when the last message is the user's,
+  # and an approval-resume POST ends on the assistant's turn.
+  - description: After Confirm - reports the save, never re-asks for confirmation
+    vars:
+      userMessage: Add this job.
+      priorAddJob: created
+    assert:
+      - type: javascript
+        value: file://./assertions.ts:assertNoToolCall
+      - type: llm-rubric
+        value: >-
+          The reply states plainly that the job was added or saved. It does not
+          mention a confirmation card, and does not ask the user to confirm,
+          review, check or press anything.
 
   # US-5 measured rather than asserted in prose: the agent has no read tool,
   # so the only correct answer is to say so.
@@ -253,6 +307,41 @@ tests:
     assert:
       - type: javascript
         value: file://./assertions.ts:assertCallsMatchJob
+
+  # The other half of the page-context block, and the half the eight
+  # pageLocation: job rows cannot measure. Off a job's page the tool would
+  # return no_job in a millisecond, but the block tells the model where the
+  # user is before it spends the call, and capabilities tells it to redirect
+  # instead. The jobs-list line also forbids the failure mode that came with
+  # the page vocabulary: answering a match request by asking them to paste or
+  # re-add a job they already have saved.
+  - description: Match request from the jobs list - redirects, no tool call
+    vars:
+      userMessage: How well do I match this job?
+      pageLocation: jobs-list
+    assert:
+      - type: javascript
+        value: file://./assertions.ts:assertNoToolCall
+      - type: llm-rubric
+        value: >-
+          The reply says the user is on the jobs list rather than a single
+          job's page, and asks them to open the job they mean. It does not ask
+          them to paste a posting or to add the job again, and does not claim
+          to have scored anything.
+
+  # The 'elsewhere' page line, which names no page: the model can say a job's
+  # page is not open, and nothing more.
+  - description: Cover letter request off a job's page - redirects, no tool call
+    vars:
+      userMessage: Can you write me a cover letter for this job?
+    assert:
+      - type: javascript
+        value: file://./assertions.ts:assertNoToolCall
+      - type: llm-rubric
+        value: >-
+          The reply says no job's page is open and asks the user to open the
+          job they want the letter for. It does not write a cover letter and
+          does not claim to have written or saved one.
 
   # Both nested tools in one step serialize on Ollama past the turn deadline
   # and lose both generations. The prompt clause says one per turn; this is

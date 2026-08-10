@@ -6,10 +6,19 @@ import { createJobFromNames } from "@/lib/jobs/createJobFromNames";
 import { JobResolutionError } from "@/lib/jobs/resolve";
 import type { AgentAddJobResult } from "@/models/agent.model";
 
-const NO_DESCRIPTION = "No job description was supplied. Ask the user to paste the job posting, or to type the role's details, then try again.";
+// The model usually reaches here having omitted jobDescription because the
+// user's message looked pasted to it while no chip was made, so the recovery
+// it needs is "copy it from the message", not "ask again" — asking again is
+// what made it retry with a paraphrase and save a partial description.
+const NO_DESCRIPTION = "No job description was supplied, and no pasted posting reached this turn. If the user's own message contains the posting or any description of the role, copy it into jobDescription verbatim and in full — never summarise, shorten or condense it — and call add_job again. Only if their message has no description at all, ask them to paste the posting or type the role's details, then try again.";
 
-function failed(validationError: string): AgentAddJobResult {
-  return { created: false, resolutions: [], validationError };
+// What the card shows instead. The text above is addressed to the model, and
+// the card would otherwise print all of it — field name, retry instruction
+// and all — into the user's own transcript.
+const NO_DESCRIPTION_DISPLAY = "no description came through with it. Paste the posting or say what the role involves, and it will be added.";
+
+function failed(validationError: string, displayError?: string): AgentAddJobResult {
+  return { created: false, resolutions: [], validationError, displayError };
 }
 
 /**
@@ -23,7 +32,14 @@ export function buildAddJobTool(userId: string, pastedText?: string) {
     // Date transforms are deferred here so this schema doubles as the JSON
     // schema the model reads — see src/models/agent.schema.ts.
     inputSchema: AgentAddJobSchema,
-    needsApproval: true,
+    // Approval is asked for every call that could write, and skipped only for
+    // one that execute is already certain to reject. The card renders before
+    // execute runs, so a doomed call otherwise spends a Confirm and the retry
+    // spends a second one — the user confirms the same job twice. This stays
+    // in lockstep with the jobDescription check below: widening it to any
+    // other condition would let a write reach the database unapproved.
+    needsApproval: (input: { jobDescription?: string }) =>
+      Boolean(pastedText ?? input?.jobDescription),
     execute: async (raw): Promise<AgentAddJobResult> => {
       const parsed = AgentAddJobParseSchema.safeParse(raw);
       if (!parsed.success) {
@@ -37,7 +53,7 @@ export function buildAddJobTool(userId: string, pastedText?: string) {
 
       const input = parsed.data;
       const jobDescription = pastedText ?? input.jobDescription;
-      if (!jobDescription) return failed(NO_DESCRIPTION);
+      if (!jobDescription) return failed(NO_DESCRIPTION, NO_DESCRIPTION_DISPLAY);
 
       try {
         const result = await createJobFromNames(

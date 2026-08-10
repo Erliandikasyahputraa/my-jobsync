@@ -29,6 +29,10 @@ const paste = async (text: string) => {
 
 const short = "a short pasted note";
 const long = "x".repeat(APP_CONSTANTS.AGENT_CHAT_PASTE_THRESHOLD + 100);
+// A real Indeed posting measured 1368 chars and fell under the old 1500-char
+// threshold, so it arrived as plain text with no chip and add_job lost the
+// description. The threshold has to clear a posting this size.
+const posting = "z".repeat(1368);
 const huge = "y".repeat(APP_CONSTANTS.AGENT_CHAT_PASTE_MAX_CHARS + 1000);
 
 describe("AgentChatInput", () => {
@@ -59,6 +63,13 @@ describe("AgentChatInput", () => {
     expect(screen.getByRole("textbox")).toHaveValue("");
     await userEvent.click(screen.getByRole("button", { name: /remove/i }));
     expect(screen.queryByText(/pasted/i)).not.toBeInTheDocument();
+  });
+
+  it("chips a short job posting, not just a long one", async () => {
+    render(<AgentChatInput />);
+    await paste(posting);
+    expect(screen.getByText(/pasted/i)).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toHaveValue("");
   });
 
   // Browsers gate crypto.randomUUID behind a secure context, so it is absent

@@ -32,9 +32,14 @@ describe("AgentAddJobSchema", () => {
     );
   });
 
-  it("makes jobDescription optional and tells the model to omit it on the paste path", () => {
+  // Optional in the schema but asked for unconditionally in the text: an
+  // omission is then caught by execute, which returns a targeted recovery
+  // and a clean card. Making it required moves the same failure into the
+  // SDK, where the model gets an opaque error and the user gets "That could
+  // not be completed."
+  it("keeps jobDescription optional while telling the model to always send it", () => {
     expect(AgentAddJobSchema.safeParse({ company: "Acme", jobTitle: "Eng" }).success).toBe(true);
-    expect(AgentAddJobSchema.shape.jobDescription.description).toMatch(/omit/i);
+    expect(AgentAddJobSchema.shape.jobDescription.description).toMatch(/always include this field/i);
     expect(AgentAddJobSchema.shape.jobDescription.description).not.toBe(
       McpAddJobInputShape.jobDescription.description,
     );

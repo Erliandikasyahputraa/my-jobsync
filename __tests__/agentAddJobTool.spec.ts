@@ -2,6 +2,7 @@ import { buildAddJobTool } from "@/lib/agent/tools/addJob";
 import { buildAgentTools } from "@/lib/agent/tools";
 import { createJobFromNames } from "@/lib/jobs/createJobFromNames";
 import { JobResolutionError } from "@/lib/jobs/resolve";
+import { addJobSettled } from "@/models/agent.model";
 
 vi.mock("@/lib/jobs/createJobFromNames", () => ({ createJobFromNames: vi.fn() }));
 
@@ -32,8 +33,19 @@ describe("add_job agent tool", () => {
     (createJobFromNames as any).mockResolvedValue(created);
   });
 
+  const needsApproval = (tool: any, input: any) =>
+    tool.needsApproval(input, { toolCallId: "c", messages: [] });
+
   it("requires approval — a mutating tool can never execute unapproved", () => {
-    expect(buildAddJobTool("user-1").needsApproval).toBe(true);
+    expect(needsApproval(buildAddJobTool("user-1"), { company: "Acme", jobTitle: "Engineer", jobDescription: longDescription })).toBe(true);
+    expect(needsApproval(buildAddJobTool("user-1", "posting"), { company: "Acme", jobTitle: "Engineer" })).toBe(true);
+  });
+
+  // The card renders before execute runs, so asking for a call execute is
+  // already certain to reject spends a Confirm, and the retry spends a second
+  // one — the user confirms the same job twice.
+  it("skips approval only for a call that cannot write", () => {
+    expect(needsApproval(buildAddJobTool("user-1"), { company: "Acme", jobTitle: "Engineer" })).toBe(false);
   });
 
   it("passes the SESSION userId, never one supplied by the model", async () => {
@@ -100,6 +112,31 @@ describe("add_job agent tool", () => {
     expect(createJobFromNames).not.toHaveBeenCalled();
   });
 
+  // The model reaches here having omitted jobDescription because the posting
+  // looked pasted to it, so the recovery it needs is "copy it from the
+  // message", not "ask again". Asking again is what produced a paraphrase.
+  it("tells the model to copy an unchipped posting verbatim rather than summarise it", async () => {
+    const result: any = await execute(buildAddJobTool("user-1"), { company: "Acme", jobTitle: "Engineer" });
+    expect(result.validationError).toMatch(/verbatim/i);
+    expect(result.validationError).toMatch(/summar|shorten|condense/i);
+  });
+
+  // The card renders displayError when there is one, so that text is the
+  // user's whole view of this failure — it must not carry the model's
+  // instructions to itself.
+  it("gives the card its own copy, free of the model's retry instructions", async () => {
+    const result: any = await execute(buildAddJobTool("user-1"), { company: "Acme", jobTitle: "Engineer" });
+    expect(result.displayError).toMatch(/description/i);
+    expect(result.displayError).not.toMatch(/verbatim|jobDescription|add_job|call it again/i);
+  });
+
+  // Zod's messages name the field and its accepted values, so they read fine
+  // on the card as they are and deliberately set no displayError.
+  it("leaves a schema message unaltered for the card", async () => {
+    const result: any = await execute(buildAddJobTool("user-1", "posting"), { company: "Acme", jobTitle: "Engineer", dueDate: "next friday" });
+    expect(result.displayError).toBeUndefined();
+  });
+
   it("returns a ZodError from the in-execute parse as a tool result, not a throw", async () => {
     const result: any = await execute(buildAddJobTool("user-1", "posting"), { company: "Acme", jobTitle: "Engineer", dueDate: "next friday" });
     expect(result.validationError).toMatch(/dueDate/);
@@ -124,6 +161,33 @@ describe("add_job agent tool", () => {
     expect(result.created).toBe(false);
     expect(result.validationError).toContain("workplaceType");
     expect(result.validationError).toContain("Onsite");
+  });
+
+  // Skipping approval moves the failure into the step that made the call, so
+  // the terminal-tool stop condition has to let that one step be retried.
+  describe("addJobSettled", () => {
+    const call = [{ toolName: "add_job" }];
+
+    it("does not end the turn on a validation failure", () => {
+      expect(addJobSettled({ toolCalls: call, toolResults: [{ toolName: "add_job", output: { created: false, validationError: "no description" } }] })).toBe(false);
+    });
+
+    // An input-schema failure produces a tool-call marked invalid and no tool
+    // result, which is indistinguishable from a pending approval without it.
+    it("does not end the turn on a schema-invalid call", () => {
+      expect(addJobSettled({ toolCalls: [{ toolName: "add_job", invalid: true }], toolResults: [] })).toBe(false);
+    });
+
+    it("ends the turn on a write, a duplicate, or a pending approval", () => {
+      expect(addJobSettled({ toolCalls: call, toolResults: [{ toolName: "add_job", output: { created: true, jobId: "job-1" } }] })).toBe(true);
+      expect(addJobSettled({ toolCalls: call, toolResults: [{ toolName: "add_job", output: { created: false, duplicateOf: { id: "job-9" } } }] })).toBe(true);
+      expect(addJobSettled({ toolCalls: call, toolResults: [] })).toBe(true);
+    });
+
+    it("ignores a step that did not call add_job", () => {
+      expect(addJobSettled({ toolCalls: [{ toolName: "get_resume" }], toolResults: [] })).toBe(false);
+      expect(addJobSettled({})).toBe(false);
+    });
   });
 
   it("registers exactly the tools the chat exposes", () => {

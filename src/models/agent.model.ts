@@ -56,6 +56,11 @@ export type AgentAddJobResult = {
   descriptionChars?: number;
   descriptionCompleteness?: DescriptionCompleteness;
   validationError?: string;
+  // The card renders validationError verbatim, so a recovery instruction
+  // written at the model reaches the user as prose about itself. Set this
+  // wherever the two audiences need different words; Zod's own messages name
+  // the field and its values and read fine unaided, so they leave it unset.
+  displayError?: string;
 };
 
 // Which rule picked the resume. Surfaced so the result card can say "your
@@ -172,3 +177,26 @@ export const AGENT_CHAT_TERMINAL_TOOLS = [
   "add_job",
   ...AGENT_NESTED_TOOLS,
 ] as const;
+
+// add_job is terminal once it has SETTLED — written, hit a duplicate, or
+// asked for approval — not merely once it has been called. A call that cannot
+// write skips approval and so fails inside the same step that made it, and
+// hasToolCall would end the turn on the one step the model needs to retry in,
+// leaving the user a red card and no answer.
+export function addJobSettled(step: {
+  toolCalls?: readonly { toolName: string; invalid?: boolean }[];
+  toolResults?: readonly { toolName: string; output?: unknown }[];
+}): boolean {
+  const call = step.toolCalls?.find((c) => c.toolName === "add_job");
+  if (!call) return false;
+  // A call whose input failed the tool's own schema never reaches execute:
+  // the SDK marks it invalid and emits a tool-error, so it produces no
+  // tool-result and would otherwise read as a pending approval below. It is
+  // the same retryable failure as a validationError, one layer up.
+  if (call.invalid) return false;
+  const result = step.toolResults?.find((r) => r.toolName === "add_job");
+  // No result yet means the call is waiting on the approval card, and nothing
+  // more can happen this turn.
+  if (!result) return true;
+  return !(result.output as AgentAddJobResult | undefined)?.validationError;
+}

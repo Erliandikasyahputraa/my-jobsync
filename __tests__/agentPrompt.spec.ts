@@ -4,6 +4,7 @@ import {
   AGENT_TOOL_DESCRIPTIONS,
   buildPasteContextMessage,
 } from "@/lib/agent/prompt";
+import { AgentAddJobSchema } from "@/models/agent.schema";
 import {
   RESUME_REVIEW_SYSTEM_PROMPT,
   RESUME_REVIEW_OUTPUT_FORMAT,
@@ -38,8 +39,34 @@ describe("agent chat system prompt", () => {
     expect(AGENT_CHAT_PROMPT_SECTIONS.capabilities).toMatch(/never ask the user for optional fields/i);
   });
 
-  it("tells the model not to echo a pasted description back", () => {
-    expect(AGENT_CHAT_PROMPT_SECTIONS.paste).toMatch(/do not.*(repeat|echo|copy)/i);
+  // The approval-resume POST narrates a write that already happened, and the
+  // only card language in the section is future-tense — so the model told the
+  // user to "hit Confirm to save it" for a job already in the database.
+  it("tells the model a created job is already saved", () => {
+    expect(AGENT_CHAT_PROMPT_SECTIONS.capabilities).toMatch(/already pressed Confirm/i);
+    expect(AGENT_CHAT_PROMPT_SECTIONS.capabilities).toMatch(/never mention the confirmation card/i);
+  });
+
+  // The model has to CLASSIFY nothing here. Asking it to decide whether a
+  // paste happened failed three ways in testing — it invented invisible
+  // markers, then treated a missing marker as an anomaly to raise with the
+  // user, and spent 18k characters of reasoning either way. execute prefers
+  // pastedText over the model's field, so an unconditional rule is correct
+  // in both cases and has no decision to get wrong.
+  it("requires jobDescription unconditionally, with no paste branch to decide", () => {
+    expect(AGENT_CHAT_PROMPT_SECTIONS.paste).toMatch(/verbatim/i);
+    expect(AGENT_CHAT_PROMPT_SECTIONS.paste).toMatch(/no case where you leave it out/i);
+    // No instruction to omit, and nothing for the model to weigh up.
+    expect(AGENT_CHAT_PROMPT_SECTIONS.paste).not.toMatch(/omit the field|omit this field|omit it entirely/i);
+    expect(AGENT_CHAT_PROMPT_SECTIONS.paste).not.toContain("<<<PASTED_");
+  });
+
+  // The description the model reads is the other half of the same rule; the
+  // two disagreeing is what the model resolves by guessing.
+  it("keeps the jobDescription schema description free of an omit instruction", () => {
+    const described = AgentAddJobSchema.shape.jobDescription.description ?? "";
+    expect(described).toMatch(/always include this field/i);
+    expect(described).not.toMatch(/omit/i);
   });
 
   it("names the approval verbs the UI actually uses", () => {

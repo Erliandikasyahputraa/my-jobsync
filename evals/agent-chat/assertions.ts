@@ -1,4 +1,5 @@
 import { parseResumeReview } from '../../src/lib/ai/resumeReview/parse';
+import { APP_CONSTANTS } from '../../src/lib/constants';
 
 type AssertionResult = { pass: boolean; score: number; reason: string };
 type ToolCall = { name: string; args: Record<string, any> };
@@ -65,11 +66,62 @@ export function assertCompanyAndTitle(output: unknown, context: Context): Assert
   return { pass, score: pass ? 1 : 0, reason: pass ? 'company + title correct' : `got company="${args.company}" title="${args.jobTitle}", wanted "${wantCompany}" / "${wantTitle}"` };
 }
 
-// The paste path's defining assertion: the model must NOT re-emit the posting.
-export function assertNoDescriptionOnPastePath(output: unknown): AssertionResult {
-  const args = argsOf(output);
-  const pass = args.jobDescription === undefined || args.jobDescription === null;
-  return { pass, score: pass ? 1 : 0, reason: pass ? 'jobDescription omitted, as instructed' : `model re-emitted ${String(args.jobDescription).length} chars of description` };
+// Whitespace-insensitive, so a copy the model reflowed still counts as one.
+function squash(text: string): string {
+  return text.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+// A phrase two models would both produce is not evidence of copying, so runs
+// shorter than this are ignored entirely.
+const MIN_RUN = 40;
+
+// How much of `copy` is verbatim from `source`, as the total length of its
+// runs of MIN_RUN or more. Coverage rather than the single longest run: a
+// model that lifts a header into fields and copies the rest leaves a gap in
+// the middle, and one long run scored that at half of what it copied.
+function copiedFrom(copy: string, source: string): number {
+  let total = 0;
+  let i = 0;
+  while (i < copy.length) {
+    let run = 0;
+    while (i + run < copy.length && source.includes(copy.slice(i, i + run + 1))) run++;
+    if (run >= MIN_RUN) {
+      total += run;
+      i += run;
+    } else {
+      i++;
+    }
+  }
+  return total;
+}
+
+// The paste path's defining assertion, inverted: the model must now COPY the
+// posting into jobDescription rather than omit it, because a message that only
+// looks pasted to it arrives with no pastedText for the app to splice in.
+export function assertDescriptionCopiedFromPaste(output: unknown, context: Context): AssertionResult {
+  const head = String(context.vars.jobPosting ?? '').slice(0, APP_CONSTANTS.AGENT_CHAT_PASTE_HEAD_CHARS);
+  return assertCopiedFrom(output, head, 'the paste path');
+}
+
+// The sub-threshold path, and the one that actually decides what gets stored:
+// under AGENT_CHAT_PASTE_THRESHOLD the composer makes no chip, so the posting
+// arrives as plain message text, execute has no pastedText to splice, and
+// whatever the model copied IS the saved description. Nothing recovers an
+// omission here — which is why the source of truth is the whole posting rather
+// than a truncated head.
+export function assertDescriptionCopiedFromMessage(output: unknown, context: Context): AssertionResult {
+  return assertCopiedFrom(output, String(context.vars.inlinePosting ?? ''), 'the inline path');
+}
+
+function assertCopiedFrom(output: unknown, source: string, label: string): AssertionResult {
+  const jobDescription = argsOf(output).jobDescription;
+  if (typeof jobDescription !== 'string' || !jobDescription.trim()) {
+    return { pass: false, score: 0, reason: `jobDescription omitted on ${label}` };
+  }
+  const want = squash(source);
+  const copied = copiedFrom(squash(jobDescription), want);
+  const pass = copied >= want.length * 0.5;
+  return { pass, score: pass ? 1 : 0, reason: pass ? `copied ${copied} of ${want.length} chars verbatim` : `only ${copied} of ${want.length} chars are verbatim — summarised, not copied` };
 }
 
 // The typed path's inverse: with no paste, the description has to come from
@@ -117,6 +169,15 @@ function textOf(output: unknown): string {
   return String(raw?.content ?? '');
 }
 
+// The inverse of the assertCalls* family, for the rows where reaching for a
+// tool is itself the failure. Pairs with an llm-rubric on what was said
+// instead — this half only pins that nothing was called.
+export function assertNoToolCall(output: unknown): AssertionResult {
+  const calls = parseToolCalls(output);
+  const pass = calls.length === 0;
+  return { pass, score: pass ? 1 : 0, reason: pass ? 'answered without calling a tool' : `expected no tool call, got: ${describe(calls)}` };
+}
+
 export function assertCallsGetResume(output: unknown): AssertionResult {
   const calls = parseToolCalls(output);
   const pass = calls.length === 1 && calls[0].name === 'get_resume';
@@ -153,9 +214,14 @@ const NESTED = ['review_resume', 'match_job', 'generate_cover_letter'];
 // deadline; the guard makes the second return busy, and the prompt asks for one
 // per turn so it does not come to that. This measures it.
 export function assertOneNestedCall(output: unknown): AssertionResult {
-  const nested = parseToolCalls(output).filter((c) => NESTED.includes(c.name));
-  const pass = nested.length === 1;
-  return { pass, score: pass ? 1 : 0, reason: pass ? `called ${nested[0].name} alone` : `expected exactly one nested call, got: ${describe(nested)}` };
+  const calls = parseToolCalls(output);
+  const nested = calls.filter((c) => NESTED.includes(c.name));
+  // "Alone" counts the whole step, not just the nested ones: filtering first
+  // passed a step that called review_resume AND add_job, which is not one
+  // analysis and a clean turn — it is the model answering a question it was
+  // not asked while a generation runs.
+  const pass = nested.length === 1 && calls.length === 1;
+  return { pass, score: pass ? 1 : 0, reason: pass ? `called ${nested[0].name} alone` : `expected exactly one nested call and nothing else, got: ${describe(calls)}` };
 }
 
 export function assertFollowUpStaysConversational(output: unknown): AssertionResult {

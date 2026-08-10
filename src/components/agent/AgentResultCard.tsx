@@ -26,7 +26,11 @@ function AddJobResult({
   input: Record<string, unknown>;
 }) {
   if (output.validationError) {
-    return <p className="text-sm">Could not add the job — {output.validationError}</p>;
+    return (
+      <p className="text-sm">
+        Could not add the job — {output.displayError ?? output.validationError}
+      </p>
+    );
   }
 
   if (output.duplicateOf) {

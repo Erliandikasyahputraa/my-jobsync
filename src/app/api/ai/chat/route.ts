@@ -10,6 +10,7 @@ import {
   isToolUIPart,
   stepCountIs,
   streamText,
+  type StopCondition,
   type UIMessage,
 } from "ai";
 import { getModel, type ProviderType } from "@/lib/ai/providers";
@@ -33,7 +34,12 @@ import { mapAgentError } from "@/lib/agent/errors";
 import { getUserSettings } from "@/actions/userSettings.actions";
 import { saveChatConversation } from "@/actions/agentChat.actions";
 import { AiProvider } from "@/models/ai.model";
-import { AGENT_CHAT_TERMINAL_TOOLS } from "@/models/agent.model";
+import { addJobSettled, AGENT_CHAT_TERMINAL_TOOLS } from "@/models/agent.model";
+
+// The one terminal tool whose stop condition is not "was it called" — see
+// addJobSettled.
+const addJobSettledStop: StopCondition<any> = ({ steps }) =>
+  addJobSettled(steps[steps.length - 1] ?? {});
 
 // One structured line per turn. Sizes and outcomes only — never the pasted
 // posting and never the extracted arguments.
@@ -192,7 +198,9 @@ export const POST = async (req: NextRequest) => {
         // in agent.model.ts, where a new tool is registered.
         stopWhen: [
           stepCountIs(APP_CONSTANTS.AGENT_CHAT_MAX_STEPS),
-          ...AGENT_CHAT_TERMINAL_TOOLS.map((name) => hasToolCall(name)),
+          ...AGENT_CHAT_TERMINAL_TOOLS.map((name) =>
+            name === "add_job" ? addJobSettledStop : hasToolCall(name),
+          ),
         ],
         // Argument extraction wants determinism.
         temperature: TEMPERATURES.ANALYSIS,

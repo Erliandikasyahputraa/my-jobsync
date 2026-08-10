@@ -30,7 +30,7 @@ export const AgentAddJobSchema = z
       .string()
       .refine((val) => val === "N/A" || val.length >= 10, "jobDescription must be at least 10 characters")
       .optional()
-      .describe("What the job involves, in the user's own words. If the user typed the job's details into the chat, put their description of the role here verbatim, even if it is only one sentence — it does not need to look like a full posting, and it must not be condensed into tags instead. If the user pasted a posting, omit this field entirely — the app splices their pasted text in verbatim. Use 'N/A' only if the user explicitly declines to give any description after being asked once."),
+      .describe("What the job involves, in the user's own words, copied verbatim and never summarised. Always include this field, even if their description is only one sentence and looks nothing like a full posting, and never condense it into tags instead. If the user pasted a posting the app replaces this with their exact text, so copy what you were shown rather than leaving it out. Use 'N/A' only if the user explicitly declines to give any description after being asked once."),
   });
 
 export const AgentAddJobInputShape = AgentAddJobSchema.shape;

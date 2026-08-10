@@ -27,8 +27,15 @@ describe("checkRateLimit buckets", () => {
 
   it("exposes the agent chat constants the feature depends on", () => {
     expect(APP_CONSTANTS.AGENT_CHAT_MAX_STEPS).toBe(4);
+    // The threshold sits below the head so every chipped paste has its
+    // opening shown to the model in full, and the head stays a bounded
+    // window into a much larger ceiling. This replaced a head < threshold * 2
+    // ratio that only described the original 1500-char threshold.
+    expect(APP_CONSTANTS.AGENT_CHAT_PASTE_THRESHOLD).toBeLessThan(
+      APP_CONSTANTS.AGENT_CHAT_PASTE_HEAD_CHARS,
+    );
     expect(APP_CONSTANTS.AGENT_CHAT_PASTE_HEAD_CHARS).toBeLessThan(
-      APP_CONSTANTS.AGENT_CHAT_PASTE_THRESHOLD * 2,
+      APP_CONSTANTS.AGENT_CHAT_PASTE_MAX_CHARS,
     );
     expect(APP_CONSTANTS.AGENT_CHAT_PASTE_MAX_CHARS).toBeGreaterThan(
       APP_CONSTANTS.AGENT_CHAT_PASTE_THRESHOLD,
