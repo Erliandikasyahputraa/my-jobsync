@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { AgentMarkdown } from "@/components/agent/AgentMarkdown";
-import { AgentResumePicker } from "@/components/agent/AgentResumePicker";
+import { NoResumesNotice } from "@/components/agent/AgentResultCard/NoResumesNotice";
+import { ResumeSelectionPrompt } from "@/components/agent/AgentResultCard/ResumeSelectionPrompt";
 import type { AgentCoverLetterResult } from "@/models/agent.model";
 
 // The letter comes from the tool output, not from the streamed text: the
@@ -27,24 +28,18 @@ export function CoverLetterResult({ output }: { output: AgentCoverLetterResult }
   }
 
   if (output.status === "no_resumes") {
-    return (
-      <p className="text-sm">
-        You don&apos;t have any resumes yet — create one on the Profile page.
-      </p>
-    );
+    return <NoResumesNotice />;
   }
 
   if (output.status === "needs_selection") {
     return (
-      <div className="text-sm">
-        <p>Which resume should the letter draw on?</p>
-        <AgentResumePicker
-          resumes={output.resumes}
-          messageFor={(title) =>
-            `Write a cover letter for this job using my resume "${title}"`
-          }
-        />
-      </div>
+      <ResumeSelectionPrompt
+        prompt="Which resume should the letter draw on?"
+        resumes={output.resumes}
+        messageFor={(title) =>
+          `Write a cover letter for this job using my resume "${title}"`
+        }
+      />
     );
   }
 

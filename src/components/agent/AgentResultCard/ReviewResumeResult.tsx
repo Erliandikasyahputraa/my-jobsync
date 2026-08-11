@@ -1,7 +1,8 @@
 "use client";
 
-import { AgentResumePicker } from "@/components/agent/AgentResumePicker";
 import { AgentReviewContent } from "@/components/agent/AgentReviewContent";
+import { NoResumesNotice } from "@/components/agent/AgentResultCard/NoResumesNotice";
+import { ResumeSelectionPrompt } from "@/components/agent/AgentResultCard/ResumeSelectionPrompt";
 import type { AgentReviewResumeResult } from "@/models/agent.model";
 
 // The scores and body come from the tool output, not from parsed prose — the
@@ -9,20 +10,11 @@ import type { AgentReviewResumeResult } from "@/models/agent.model";
 // what was saved.
 export function ReviewResumeResult({ output }: { output: AgentReviewResumeResult }) {
   if (output.status === "no_resumes") {
-    return (
-      <p className="text-sm">
-        You don&apos;t have any resumes yet — create one on the Profile page.
-      </p>
-    );
+    return <NoResumesNotice />;
   }
 
   if (output.status === "needs_selection") {
-    return (
-      <div className="text-sm">
-        <p>Which resume?</p>
-        <AgentResumePicker resumes={output.resumes} />
-      </div>
-    );
+    return <ResumeSelectionPrompt prompt="Which resume?" resumes={output.resumes} />;
   }
 
   if (output.status === "unreadable" || output.status === "generation_failed") {

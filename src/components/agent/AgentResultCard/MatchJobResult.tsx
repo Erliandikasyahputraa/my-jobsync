@@ -1,7 +1,8 @@
 "use client";
 
-import { AgentResumePicker } from "@/components/agent/AgentResumePicker";
 import { AgentMatchContent } from "@/components/agent/AgentMatchContent";
+import { NoResumesNotice } from "@/components/agent/AgentResultCard/NoResumesNotice";
+import { ResumeSelectionPrompt } from "@/components/agent/AgentResultCard/ResumeSelectionPrompt";
 import type { AgentMatchJobResult } from "@/models/agent.model";
 
 // The score and body come from the tool output, not from parsed prose — the
@@ -18,22 +19,16 @@ export function MatchJobResult({ output }: { output: AgentMatchJobResult }) {
   }
 
   if (output.status === "no_resumes") {
-    return (
-      <p className="text-sm">
-        You don&apos;t have any resumes yet — create one on the Profile page.
-      </p>
-    );
+    return <NoResumesNotice />;
   }
 
   if (output.status === "needs_selection") {
     return (
-      <div className="text-sm">
-        <p>Which resume should I match against?</p>
-        <AgentResumePicker
-          resumes={output.resumes}
-          messageFor={(title) => `Match this job against my resume "${title}"`}
-        />
-      </div>
+      <ResumeSelectionPrompt
+        prompt="Which resume should I match against?"
+        resumes={output.resumes}
+        messageFor={(title) => `Match this job against my resume "${title}"`}
+      />
     );
   }
 

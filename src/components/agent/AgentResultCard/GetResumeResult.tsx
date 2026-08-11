@@ -1,17 +1,14 @@
 "use client";
 
-import { AgentResumePicker } from "@/components/agent/AgentResumePicker";
+import { NoResumesNotice } from "@/components/agent/AgentResultCard/NoResumesNotice";
+import { ResumeSelectionPrompt } from "@/components/agent/AgentResultCard/ResumeSelectionPrompt";
 import type { AgentGetResumeResult } from "@/models/agent.model";
 
 // The resume text itself is never rendered: the user is about to read the
 // review, not the serialization, and the card would be a wall of text.
 export function GetResumeResult({ output }: { output: AgentGetResumeResult }) {
   if (output.status === "no_resumes") {
-    return (
-      <p className="text-sm">
-        You don&apos;t have any resumes yet — create one on the Profile page.
-      </p>
-    );
+    return <NoResumesNotice />;
   }
 
   if (output.status === "unreadable") {
@@ -23,12 +20,7 @@ export function GetResumeResult({ output }: { output: AgentGetResumeResult }) {
   }
 
   if (output.status === "needs_selection") {
-    return (
-      <div className="text-sm">
-        <p>Which resume?</p>
-        <AgentResumePicker resumes={output.resumes} />
-      </div>
-    );
+    return <ResumeSelectionPrompt prompt="Which resume?" resumes={output.resumes} />;
   }
 
   const sourceNote =
