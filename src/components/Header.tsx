@@ -56,7 +56,9 @@ async function Header() {
         </SheetContent>
       </Sheet>
       <SidebarToggle />
-      <h1 className="font-semibold">JobSync - Job Search Assistant</h1>
+      <h1 className="font-semibold">
+        JobSync<span className="hidden sm:inline"> - Job Search Assistant</span>
+      </h1>
       <div className="relative ml-auto flex-1 md:grow-0">
         {/* <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
