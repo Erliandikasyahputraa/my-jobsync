@@ -3,8 +3,10 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 // There is one right rail. Opening any panel closes whichever holds it, so
-// the stacking, scrim and pointer-events collisions between the chat panel
-// and the three modal AI sheets never arise.
+// two panels never collide over stacking, scrim and pointer-events. It was
+// written to keep the chat panel apart from the three modal AI sheets; those
+// are retired and the chat panel is the only holder today, so the invariant
+// costs nothing and the next rail-holding panel inherits it.
 type RightRail = {
   holder: string | null;
   requestOpen: (id: string) => void;
@@ -16,8 +18,8 @@ const RightRailContext = createContext<RightRail | null>(null);
 export function RightRailProvider({ children }: { children: React.ReactNode }) {
   const [holder, setHolder] = useState<string | null>(null);
 
-  // Unconditional in v1: no busy state, no refusal, no veto. All three
-  // collisions this exists for are collisions of presence.
+  // Unconditional: no busy state, no refusal, no veto. The collisions this
+  // exists for are collisions of presence.
   const requestOpen = useCallback((id: string) => setHolder(id), []);
 
   const close = useCallback((id: string) => {

@@ -27,11 +27,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { ExportPdfDialog } from "./ExportPdfDialog";
 import type { ResumeLayout } from "./resume-pdf";
 import {
   AlertDialog,
@@ -383,6 +381,7 @@ function ResumeContainer({
     filename: string;
   } | null>(null);
   const [showAttachConfirm, setShowAttachConfirm] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [showDiscardImportConfirm, setShowDiscardImportConfirm] =
     useState(false);
 
@@ -808,31 +807,13 @@ function ResumeContainer({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger
-                  className="cursor-pointer"
-                  disabled={isExporting}
-                >
-                  <FileDown className="h-4 w-4 mr-2" />
-                  {isExporting ? "Generating…" : "Export to PDF"}
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onClick={() => handleExportPdf("simple")}
-                    disabled={isExporting}
-                  >
-                    Simple
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onClick={() => handleExportPdf("professional")}
-                    disabled={isExporting}
-                  >
-                    Professional
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => setShowExportDialog(true)}
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                Export to PDF
+              </DropdownMenuItem>
               {!isDefault && (
                 <DropdownMenuItem
                   className="cursor-pointer"
@@ -1008,6 +989,14 @@ function ResumeContainer({
           openDialogForEdit={openCertificationDialogForEdit}
         />
       )}
+
+      {/* PDF EXPORT TEMPLATE PICKER */}
+      <ExportPdfDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        isExporting={isExporting}
+        onExport={handleExportPdf}
+      />
 
       {/* PDF ATTACHMENT CONFIRM */}
       <AlertDialog open={showAttachConfirm} onOpenChange={setShowAttachConfirm}>
