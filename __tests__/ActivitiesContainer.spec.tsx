@@ -646,7 +646,6 @@ describe("ActivitiesContainer Search Functionality", () => {
         expect(stopActivityById).toHaveBeenCalledWith(
           "current-1",
           expect.any(Date),
-          expect.any(Number)
         );
         expect(startActivityById).toHaveBeenCalledWith("1");
       });
