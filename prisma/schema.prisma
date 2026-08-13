@@ -359,6 +359,13 @@ model Activity {
   startTime    DateTime
   endTime      DateTime?
   duration     Int?
+  // Completed break time in minutes. Existing rows default to 0, so
+  // duration keeps meaning (endTime - startTime) for everything already saved.
+  breakMinutes     Int       @default(0)
+  // Set only while a break is open — this is the on-break flag.
+  breakStartedAt   DateTime?
+  // Drives the countdown ring only; never the arithmetic.
+  breakPlannedMins Int?
   description  String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
