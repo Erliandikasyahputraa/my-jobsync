@@ -3,6 +3,7 @@ import {
   INSERT_ORDER,
   DELETE_ORDER,
   LOOKUP_MODELS,
+  EMPTINESS_MODELS,
   type BackupModel,
 } from "@/lib/backup/ordering";
 
@@ -82,5 +83,31 @@ describe("backup ordering", () => {
     expect(MODEL_SPECS.AutomationRun.scope("u1")).toEqual({
       automation: { userId: "u1" },
     });
+  });
+});
+
+describe("emptiness models", () => {
+  it("counts content models only, so seeded JobSource rows do not demand a wipe", () => {
+    expect([...EMPTINESS_MODELS].sort()).toEqual([
+      "Activity",
+      "Automation",
+      "CoverLetter",
+      "Job",
+      "Note",
+      "Profile",
+      "Question",
+      "Resume",
+      "Task",
+    ]);
+  });
+
+  it("includes no lookup model", () => {
+    for (const model of LOOKUP_MODELS) {
+      expect(EMPTINESS_MODELS).not.toContain(model);
+    }
+  });
+
+  it("includes Profile, so an import cannot add a second one", () => {
+    expect(EMPTINESS_MODELS).toContain("Profile");
   });
 });

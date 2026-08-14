@@ -201,3 +201,19 @@ export const DELETE_ORDER: BackupModel[] = [...INSERT_ORDER].reverse();
 export const LOOKUP_MODELS: BackupModel[] = INSERT_ORDER.filter(
   (m) => MODEL_SPECS[m].lookup,
 );
+
+// signup() seeds a JobSource per JOB_SOURCES entry, so no account is ever
+// literally empty. Counting content models only keeps the destructive
+// confirmation meaningful on a fresh instance. Profile is in the list because
+// reads use findFirst — a second profile is a silent coin flip, not an error.
+export const EMPTINESS_MODELS: BackupModel[] = [
+  "Profile",
+  "Resume",
+  "CoverLetter",
+  "Job",
+  "Note",
+  "Task",
+  "Activity",
+  "Question",
+  "Automation",
+];
