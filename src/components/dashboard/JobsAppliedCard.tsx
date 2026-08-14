@@ -15,7 +15,7 @@ export default function JobsAppliedCard() {
   return (
     <Card className="sm:col-span-2 min-w-0">
       <CardHeader className="pb-3">
-        <CardTitle className="text-green-600">Dashboard</CardTitle>
+        <CardTitle className="text-lg text-green-600">Dashboard</CardTitle>
         <CardDescription className="max-w-lg text-balance leading-relaxed">
           Create new jobs, tasks, automations, and questions.
         </CardDescription>
