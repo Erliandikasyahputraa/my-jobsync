@@ -187,6 +187,22 @@ export const APP_CONSTANTS = {
 
   // File uploads
   UPLOADS_DIR: process.env.NODE_ENV !== "production" ? "data" : "/data",
+
+  // Backup caps. Everything is held in RAM at once, so the upload cap is what
+  // bounds memory on a box also running Next and the scheduler; the
+  // uncompressed cap is the zip-bomb guard. 50 MB rather than the spec's 25:
+  // resumes are 5 MB each and PDFs barely deflate, so six of them produce an
+  // export a 25 MB cap would refuse — a backup you cannot restore is worse
+  // than a large one.
+  BACKUP_MAX_UPLOAD_BYTES: 50 * 1024 * 1024,
+  BACKUP_MAX_UNCOMPRESSED_BYTES: 100 * 1024 * 1024,
+  BACKUP_MAX_ENTRIES: 5000,
+  // Pre-import snapshots retained per user. The count alone does not bound
+  // disk — nothing caps one snapshot's size — and these live on the same
+  // volume as the SQLite database, so prune on total bytes as well.
+  BACKUP_SNAPSHOT_KEEP: 5,
+  BACKUP_SNAPSHOT_MAX_TOTAL_BYTES: 250 * 1024 * 1024,
+
   MAX_RESUME_FILE_SIZE_BYTES: 5 * 1024 * 1024, // 5 MB
   RESUME_ALLOWED_MIME_TYPES: [
     "application/pdf",
