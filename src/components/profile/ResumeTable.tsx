@@ -143,9 +143,11 @@ function DocumentTable({
         <TableHeader>
           <TableRow>
             <TableHead>Title</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead className="hidden md:table-cell">Updated</TableHead>
+            <TableHead className="whitespace-nowrap">Type</TableHead>
+            <TableHead className="whitespace-nowrap">Created</TableHead>
+            <TableHead className="hidden md:table-cell whitespace-nowrap">
+              Updated
+            </TableHead>
             <TableHead>Jobs</TableHead>
             <TableHead>Actions</TableHead>
             <TableHead>
@@ -183,16 +185,16 @@ function DocumentTable({
                     </button>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   <StatusBadge
                     label={isResume ? "Resume" : "Cover Letter"}
                     color={DOCUMENT_TYPE_BADGE_COLORS[doc.type]}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   {doc.createdAt && format(doc.createdAt, "PP")}
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
+                <TableCell className="hidden md:table-cell whitespace-nowrap">
                   {doc.updatedAt && format(doc.updatedAt, "PP")}
                 </TableCell>
                 <TableCell>{doc.jobCount}</TableCell>
