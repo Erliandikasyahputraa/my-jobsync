@@ -43,6 +43,7 @@ describe("readSnapshot id validation", () => {
 // newest. Both are asserted directly.
 describe("pruneSnapshots", () => {
   const originalUploads = APP_CONSTANTS.UPLOADS_DIR;
+  const originalMaxTotalBytes = APP_CONSTANTS.BACKUP_SNAPSHOT_MAX_TOTAL_BYTES;
   let dir: string;
 
   const write = (name: string, bytes: number) =>
@@ -53,12 +54,17 @@ describe("pruneSnapshots", () => {
   beforeEach(() => {
     const root = fsSync.mkdtempSync(path.join(os.tmpdir(), "jobsync-snap-"));
     (APP_CONSTANTS as { UPLOADS_DIR: string }).UPLOADS_DIR = root;
+    // Kept tiny so the byte-budget tests don't write real 100s-of-MB
+    // files to disk — the boundary logic is the same at any scale.
+    (APP_CONSTANTS as { BACKUP_SNAPSHOT_MAX_TOTAL_BYTES: number }).BACKUP_SNAPSHOT_MAX_TOTAL_BYTES = 10_000;
     dir = snapshotDir("u1");
     fsSync.mkdirSync(dir, { recursive: true });
   });
 
   afterEach(() => {
     (APP_CONSTANTS as { UPLOADS_DIR: string }).UPLOADS_DIR = originalUploads;
+    (APP_CONSTANTS as { BACKUP_SNAPSHOT_MAX_TOTAL_BYTES: number }).BACKUP_SNAPSHOT_MAX_TOTAL_BYTES =
+      originalMaxTotalBytes;
   });
 
   it("drops everything past the keep count, oldest first", async () => {
