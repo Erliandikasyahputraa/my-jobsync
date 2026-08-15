@@ -176,7 +176,7 @@ export default function DataSettings() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Export your data</CardTitle>
+          <CardTitle className="text-lg font-medium">Export your data</CardTitle>
           <CardDescription>
             Downloads one zip with every job, resume, task, activity and question on
             this account, plus your uploaded resume files.
@@ -199,7 +199,7 @@ export default function DataSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Import a backup</CardTitle>
+          <CardTitle className="text-lg font-medium">Import a backup</CardTitle>
           <CardDescription>
             Replaces everything on this account with the contents of the backup.
             Your API keys and MCP tokens are left alone; the agent chat history is
@@ -268,7 +268,7 @@ export default function DataSettings() {
       {snapshots.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Undo an import</CardTitle>
+            <CardTitle className="text-lg font-medium">Undo an import</CardTitle>
             <CardDescription>
               Every import saves your previous data first. If you imported the
               wrong file, restore the snapshot from just before it.
