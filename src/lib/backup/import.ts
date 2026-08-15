@@ -186,6 +186,21 @@ export async function importBackup(
   userEmail: string,
   confirmWipe: boolean,
 ): Promise<ImportResult> {
+  // A JWT session outlives the database it was minted against: a container
+  // with a fresh dev.db still accepts the old cookie, and every scoped read
+  // returns empty instead of failing. wipe()'s user.update is the only
+  // statement that needs the row itself, so without this the import dies
+  // mid-transaction on an opaque P2025.
+  const owner = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!owner) {
+    throw new BackupError(
+      "Your sign-in is out of date. Sign out, sign in again, then retry the import.",
+    );
+  }
+
   const zip = await openBackupZip(bytes);
   await readManifest(zip);
   const data = await readData(zip);

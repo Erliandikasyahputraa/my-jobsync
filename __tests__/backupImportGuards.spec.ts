@@ -71,6 +71,18 @@ describe("importBackup guards", () => {
     expect(JSON.stringify(where)).toContain("user-1");
   });
 
+  // A JWT outlives the database it was minted against: a fresh container with
+  // a new dev.db still accepts the old cookie, and every scoped read comes
+  // back empty rather than failing.
+  it("refuses a session whose user row no longer exists", async () => {
+    mockDb.user.findUnique.mockResolvedValueOnce(null);
+    await expect(
+      importBackup(await emptyBackup(), "user-1", EMAIL, true),
+    ).rejects.toThrow(/sign in again/i);
+    expect(mockDb.job.deleteMany).not.toHaveBeenCalled();
+    expect(writeSnapshot).not.toHaveBeenCalled();
+  });
+
   it("refuses a payload whose data.json fails validation", async () => {
     const zip = new JSZip();
     const data = BackupDataSchema.parse({});
