@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.1.17](https://github.com/Gsync/jobsync/compare/v1.1.16...v1.1.17) (2026-08-16)
+
+
+### Features
+
+*  add Data settings panel with backup export, guarded import and snapshot rollback
+*  add backup preflight, import, snapshot list and rollback routes
+*  add destructive backup import with pre-import snapshot, wipe, ordered inserts and post-commit sync
+*  add backup import transforms — id map, FK rewrite, path sanitization and emptiness policy
+*  add backup export with ownership-scoped payload assembly and download route
+*  add backup foundations — jszip, size caps, model spec table, zod schemas and capped zip reader
+*  add activity break UI — banner Break button, break modal, ring timer (Phase 3)
+*  add client-side activity break state to ActivityContext (Phase 2)
+*  add server-side activity break lifecycle (Phase 1)
+*  replace activity time inputs with a TimePicker, fix start/end validation, and add specs
+*  add ExportPdfDialog component showing template previews
+
+### Bug Fixes
+
+*  patch npm audit vulnerabilities in root and evals lockfiles
+*  add whitespace-nowrap class to table headers and cells for better layout
+*  persist tasks activity filter in URL, sticky sidebar, hide empty types, portal tooltip content
+*  verify the session user exists, guard backup import and sign out stale dashboard sessions
+*  ensure proper handling of BACKUP_SNAPSHOT_MAX_TOTAL_BYTES in pruneSnapshots tests
+
+### Other Changes
+
+*  add real-database round-trip, rollback coverage and e2e for data backup; align settings card title size
+* enhance activity management tests to include pause and resume functionality with breaks
+*  remove release script as part of project refactoring
+*  update CardTitle font size for consistency across components
+*  update layout classes in Dashboard and Header for improved responsiveness
+*  update CardHeader and layout classes for improved responsiveness
+*  dedupe no-resumes/pick-a-resume JSX in AgentResultCard renderers
+
+
 ## [1.1.16](https://github.com/Gsync/jobsync/compare/v1.1.15...v1.1.16) (2026-08-09)
 
 
