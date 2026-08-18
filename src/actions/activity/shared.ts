@@ -1,16 +1,11 @@
 import { APP_CONSTANTS } from "@/lib/constants";
-import { getCurrentUser } from "@/utils/user.utils";
 
 // Not a "use server" module: it exports selects and sync helpers, so it stays
 // internal to src/actions/activity/ and is never imported by a client component.
 
-export const requireUser = async () => {
-  const user = await getCurrentUser();
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
-  return user;
-};
+// Re-exported so the existing "./shared" import in each activity module keeps
+// working now that requireUser is shared with the other action directories.
+export { requireUser } from "../shared";
 
 // One shape for every action that returns the running activity, so the client
 // can never receive a copy missing its break state.
@@ -25,18 +20,6 @@ export const RUNNING_ACTIVITY_SELECT = {
   breakMinutes: true,
   breakStartedAt: true,
   breakPlannedMins: true,
-};
-
-// Completed activities carry duration but no break state
-export const ACTIVITY_LIST_SELECT = {
-  id: true,
-  activityName: true,
-  startTime: true,
-  endTime: true,
-  duration: true,
-  description: true,
-  createdAt: true,
-  activityType: true,
 };
 
 export const clampBreakMinutes = (minutes: number) =>

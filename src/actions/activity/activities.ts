@@ -4,7 +4,19 @@ import { handleError } from "@/lib/utils";
 import { APP_CONSTANTS } from "@/lib/constants";
 import { Activity } from "@/models/activity.model";
 import { revalidatePath } from "next/cache";
-import { ACTIVITY_LIST_SELECT, requireUser } from "./shared";
+import { requireUser } from "./shared";
+
+// Completed activities carry duration but no break state
+const ACTIVITY_LIST_SELECT = {
+  id: true,
+  activityName: true,
+  startTime: true,
+  endTime: true,
+  duration: true,
+  description: true,
+  createdAt: true,
+  activityType: true,
+};
 
 export const getActivitiesList = async (
   page: number = 1,

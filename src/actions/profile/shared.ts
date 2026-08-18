@@ -1,16 +1,11 @@
 import prisma from "@/lib/db";
-import { getCurrentUser } from "@/utils/user.utils";
 
 // Not a "use server" module: it exports selects, so it stays internal to
 // src/actions/profile/ and is never imported by a client component.
 
-export const requireUser = async () => {
-  const user = await getCurrentUser();
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
-  return user;
-};
+// Re-exported so the existing "./shared" import in each profile module keeps
+// working now that requireUser is shared with the other action directories.
+export { requireUser } from "../shared";
 
 // Canonical IDOR guard for actions that only need to confirm resume ownership
 export const assertResumeOwnership = async (
