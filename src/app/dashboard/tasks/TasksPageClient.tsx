@@ -69,7 +69,6 @@ function TasksPageClient({
         <TasksContainer
           activityTypes={activityTypes}
           filterKey={filterKey}
-          onFilterChange={onFilterChange}
           onTasksChanged={refreshSidebarCounts}
         />
       </div>
