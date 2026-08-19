@@ -1,7 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
-import { getCurrentUser } from "@/utils/user.utils";
+import { requireUser } from "../shared";
 import { generateText } from "ai";
 import {
   getModel,
@@ -26,10 +26,7 @@ export async function analyzeDiscoveredJob(jobId: string): Promise<{
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const job = await db.job.findFirst({
       where: { id: jobId, userId: user.id, automationId: { not: null } },

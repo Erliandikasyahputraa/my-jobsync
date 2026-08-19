@@ -1,7 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
-import { getCurrentUser } from "@/utils/user.utils";
+import { requireUser } from "../shared";
 import type {
   DiscoveredJob,
   DiscoveryStatus,
@@ -24,10 +24,7 @@ export async function getDiscoveredJobs(options?: {
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const {
       automationId,
@@ -106,10 +103,7 @@ export async function getDiscoveredJobById(id: string): Promise<{
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const job = await db.job.findFirst({
       where: {
@@ -161,10 +155,7 @@ async function setDiscoveredJobStatus(
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const job = await db.job.findFirst({
       where: {
@@ -219,10 +210,7 @@ export async function clearDiscoveredJobs(options: {
   includeNew?: boolean;
 }): Promise<{ success: boolean; deleted?: number; message?: string }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const { automationId, includeNew = false } = options;
     const statuses: DiscoveryStatus[] = includeNew

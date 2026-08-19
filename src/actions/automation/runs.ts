@@ -1,7 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
-import { getCurrentUser } from "@/utils/user.utils";
+import { requireUser } from "../shared";
 import type { AutomationRun } from "@/models/automation.model";
 import { automationLogger } from "@/lib/automation-logger";
 import { formatError } from "./shared";
@@ -19,10 +19,7 @@ export async function getAutomationRuns(
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const { page = 1, limit = 10 } = options || {};
     const skip = (page - 1) * limit;
@@ -59,8 +56,7 @@ export async function deleteAutomationRun(
   runId: string,
 ): Promise<{ success: boolean; message?: string }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) return { success: false, message: "Not authenticated" };
+    const user = await requireUser();
 
     // Ownership check via automation -> userId
     const run = await db.automationRun.findFirst({

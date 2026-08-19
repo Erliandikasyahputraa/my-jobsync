@@ -5,7 +5,7 @@
 // wrapAsHtml and getOrCreateResumeSection shared across them via ./resumeImport/shared.
 
 import prisma from "@/lib/db";
-import { getCurrentUser } from "@/utils/user.utils";
+import { requireUser } from "./shared";
 import { handleError } from "@/lib/utils";
 import {
   ImportContactInfo,
@@ -38,8 +38,7 @@ export async function resolveImportCard(
   card: ImportCardPayload,
 ): Promise<ResolveResult> {
   try {
-    const user = await getCurrentUser();
-    if (!user) throw new Error("Not authenticated");
+    const user = await requireUser();
 
     // Verify resume ownership
     const owned = await prisma.resume.findUnique({

@@ -23,5 +23,5 @@ export function useAutoOpenAddTaskDialog(
         : window.location.pathname;
       router.replace(newPath);
     }
-  }, [router, searchParams]);
+  }, [router, searchParams, setDialogOpen]);
 }

@@ -1,7 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
-import { getCurrentUser } from "@/utils/user.utils";
+import { requireUser } from "../shared";
 import type { AutomationWithResume, AutomationRun } from "@/models/automation.model";
 import { APP_CONSTANTS } from "@/lib/constants";
 import { formatError } from "./shared";
@@ -16,10 +16,7 @@ export async function getAutomationsList(
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const skip = (page - 1) * limit;
 
@@ -54,10 +51,7 @@ export async function getAutomationById(id: string): Promise<{
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const automation = await db.automation.findFirst({
       where: { id, userId: user.id },

@@ -1,7 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
-import { getCurrentUser } from "@/utils/user.utils";
+import { requireUser } from "../shared";
 import { calculateNextRunAt } from "@/lib/scraper/schedule";
 import {
   CreateAutomationSchema,
@@ -21,10 +21,7 @@ export async function createAutomation(input: CreateAutomationInput): Promise<{
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const validated = CreateAutomationSchema.parse(input);
 
@@ -108,10 +105,7 @@ export async function updateAutomation(
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const validated = UpdateAutomationSchema.parse(input);
 
@@ -194,10 +188,7 @@ export async function deleteAutomation(id: string): Promise<{
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const automation = await db.automation.findFirst({
       where: { id, userId: user.id },
@@ -223,10 +214,7 @@ export async function pauseAutomation(id: string): Promise<{
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const automation = await db.automation.findFirst({
       where: { id, userId: user.id },
@@ -266,10 +254,7 @@ export async function resumeAutomation(id: string): Promise<{
   message?: string;
 }> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const user = await requireUser();
 
     const automation = await db.automation.findFirst({
       where: { id, userId: user.id },
