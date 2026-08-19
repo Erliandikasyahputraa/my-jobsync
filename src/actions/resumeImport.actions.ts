@@ -4,8 +4,8 @@
 // each card type's save logic lives in its own module, with parseImportDate,
 // wrapAsHtml and getOrCreateResumeSection shared across them via ./resumeImport/shared.
 
-import prisma from "@/lib/db";
 import { requireUser } from "./shared";
+import { assertResumeOwnership } from "./profile/shared";
 import { handleError } from "@/lib/utils";
 import {
   ImportContactInfo,
@@ -39,13 +39,7 @@ export async function resolveImportCard(
 ): Promise<ResolveResult> {
   try {
     const user = await requireUser();
-
-    // Verify resume ownership
-    const owned = await prisma.resume.findUnique({
-      where: { id: resumeId, profile: { userId: user.id } },
-      select: { id: true },
-    });
-    if (!owned) throw new Error("Resume not found or access denied");
+    await assertResumeOwnership(resumeId, user.id);
 
     switch (card.type) {
       case "contactInfo":
