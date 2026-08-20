@@ -1,7 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ContactInfo, Resume } from "@/models/profile.model";
-import type { ResumeExportSettings } from "@/models/resumeExport.model";
+import {
+  defaultResumeExportSettings,
+  type ResumeExportSettings,
+} from "@/models/resumeExport.model";
 
 const { generateResumePdfBlob } = vi.hoisted(() => ({
   generateResumePdfBlob: vi.fn(),
@@ -31,8 +34,11 @@ const resume: Resume = {
 
 const emptyResume: Resume = { id: "r2", title: "Untouched" };
 
-const simple: ResumeExportSettings = { template: "simple" };
-const professional: ResumeExportSettings = { template: "professional" };
+const simple: ResumeExportSettings = { ...defaultResumeExportSettings };
+const professional: ResumeExportSettings = {
+  ...defaultResumeExportSettings,
+  template: "professional",
+};
 
 // Flushes pending microtasks (the dynamic import) and any expired timers.
 const flush = (ms = 0) =>

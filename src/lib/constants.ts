@@ -39,6 +39,7 @@ export const APP_CONSTANTS = {
   LAST_JOB_SOURCE_STORAGE_KEY: "last-job-source",
   JOBS_VIEW_MODE_STORAGE_KEY: "jobs-view-mode",
   RESUME_PREVIEW_FIT_STORAGE_KEY: "resume-preview-fit",
+  RESUME_EXPORT_SETTINGS_STORAGE_KEY: "resume-export-settings",
   SIDEBAR_DOM_ID: "app-sidebar",
   // Paired so the rail width and its matching content offset can't drift.
   SIDEBAR_WIDTH: {

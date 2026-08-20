@@ -48,6 +48,8 @@ export function PdfPreviewPane({
   const scrollRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
+  // What the observer last saw, against what was last committed to state.
+  const measuredRef = useRef({ width: 0, height: 0 });
   const sizeRef = useRef({ width: 0, height: 0 });
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [pageCount, setPageCount] = useState(0);
@@ -57,10 +59,16 @@ export function PdfPreviewPane({
   // Read after mount: localStorage is unavailable during SSR, so seeding the
   // initial state from it would cause a hydration mismatch.
   useEffect(() => {
-    const saved = getFromLocalStorage(
-      APP_CONSTANTS.RESUME_PREVIEW_FIT_STORAGE_KEY,
-      null,
-    );
+    let saved: unknown = null;
+    try {
+      saved = getFromLocalStorage(
+        APP_CONSTANTS.RESUME_PREVIEW_FIT_STORAGE_KEY,
+        null,
+      );
+    } catch {
+      // getFromLocalStorage calls JSON.parse unguarded; a corrupt value
+      // would otherwise throw out of this effect and kill the dialog.
+    }
     if (saved === "page" || saved === "width") setFitMode(saved);
   }, []);
 
@@ -78,14 +86,18 @@ export function PdfPreviewPane({
     // Width caps the page; the scroll box's height is what decides whether a
     // whole page fits, so both are measured.
     const observer = new ResizeObserver((entries) => {
-      let { width, height } = sizeRef.current;
+      const next = { ...measuredRef.current };
       for (const entry of entries) {
         if (entry.target === measure) {
-          width = Math.floor(entry.contentRect.width);
+          next.width = Math.floor(entry.contentRect.width);
         } else {
-          height = Math.floor(entry.contentRect.height);
+          next.height = Math.floor(entry.contentRect.height);
         }
       }
+      // Recorded before the zero-guard: the two targets can report in
+      // separate callbacks, and bailing early would drop the good half.
+      measuredRef.current = next;
+      const { width, height } = next;
       if (width <= 0 || height <= 0) return;
       if (width === sizeRef.current.width && height === sizeRef.current.height) {
         return;

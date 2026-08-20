@@ -77,7 +77,6 @@ function ResumeContainer({
   } = useResumeImport(resume);
 
   const {
-    isExporting,
     showAttachConfirm,
     setShowAttachConfirm,
     handleExportPdf,
@@ -289,7 +288,6 @@ function ResumeContainer({
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
         resume={resume}
-        isExporting={isExporting}
         onExport={handleExportPdf}
       />
 

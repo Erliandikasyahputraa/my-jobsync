@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Link, Page, Text, View } from "@react-pdf/renderer";
 import { format } from "date-fns";
 import { Resume, SectionType } from "@/models/profile.model";
-import { simpleStyles } from "./styles/simple.styles";
+import type { SimpleStyles } from "./styles/simple.styles";
 import { ResumeHtmlNodes } from "./generateResumePdf";
 
 function formatDate(date: Date | undefined | null): string {
@@ -14,11 +14,17 @@ function formatLocation(label: string | undefined): string {
   return label && label !== "Not specified" ? label : "";
 }
 
-function SectionHeading({ title }: { title: string }) {
+function SectionHeading({
+  title,
+  styles,
+}: {
+  title: string;
+  styles: SimpleStyles;
+}) {
   return (
     <View>
-      <Text style={simpleStyles.sectionTitle}>{title}</Text>
-      <View style={simpleStyles.divider} />
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.divider} />
     </View>
   );
 }
@@ -26,9 +32,10 @@ function SectionHeading({ title }: { title: string }) {
 type Props = {
   resume: Resume;
   htmlNodes: ResumeHtmlNodes;
+  styles: SimpleStyles;
 };
 
-export function SimpleResumeDocument({ resume, htmlNodes }: Props) {
+export function SimpleResumeDocument({ resume, htmlNodes, styles }: Props) {
   const { ContactInfo, ResumeSections } = resume;
 
   const skillsSection = ResumeSections?.find(
@@ -64,23 +71,23 @@ export function SimpleResumeDocument({ resume, htmlNodes }: Props) {
       producer="react-pdf"
       title={resume.title}
     >
-      <Page size="A4" style={simpleStyles.page} wrap>
+      <Page size="A4" style={styles.page} wrap>
         {/* Header */}
         {ContactInfo && (
-          <View style={{ marginBottom: 12 }}>
-            <Text style={simpleStyles.heading}>
+          <View style={styles.headerBlock}>
+            <Text style={styles.heading}>
               {ContactInfo.firstName} {ContactInfo.lastName}
             </Text>
             {ContactInfo.headline ? (
-              <Text style={simpleStyles.subheading}>{ContactInfo.headline}</Text>
+              <Text style={styles.subheading}>{ContactInfo.headline}</Text>
             ) : null}
             {contactParts.length > 0 ? (
-              <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+              <View style={styles.contactRow}>
                 {contactParts.map((part, i) => (
-                  <Text key={i} style={simpleStyles.contactLine}>
+                  <Text key={i} style={styles.contactLine}>
                     {i > 0 ? " · " : ""}
                     {part.href ? (
-                      <Link src={part.href} style={{ color: "#000000", textDecoration: "none" }}>
+                      <Link src={part.href} style={styles.link}>
                         {part.text}
                       </Link>
                     ) : (
@@ -96,7 +103,7 @@ export function SimpleResumeDocument({ resume, htmlNodes }: Props) {
         {/* Summary */}
         {htmlNodes.summary.length > 0 && (
           <View>
-            <SectionHeading title="Summary" />
+            <SectionHeading title="Summary" styles={styles} />
             {htmlNodes.summary}
           </View>
         )}
@@ -113,20 +120,20 @@ export function SimpleResumeDocument({ resume, htmlNodes }: Props) {
           const hasCategories = Array.from(grouped.keys()).some((k) => k !== "");
           return (
             <View>
-              <SectionHeading title={skillsSection.sectionTitle} />
+              <SectionHeading title={skillsSection.sectionTitle} styles={styles} />
               {hasCategories ? (
                 Array.from(grouped.entries()).map(([cat, items]) => (
-                  <View key={cat || "__flat"} style={simpleStyles.skillRow}>
+                  <View key={cat || "__flat"} style={styles.skillRow}>
                     {cat ? (
-                      <Text style={simpleStyles.skillCat}>{cat.toUpperCase()}</Text>
+                      <Text style={styles.skillCat}>{cat.toUpperCase()}</Text>
                     ) : null}
-                    <Text style={simpleStyles.skillVals}>
+                    <Text style={styles.skillVals}>
                       {items.map((s) => s.Tag?.label).filter(Boolean).join(" · ")}
                     </Text>
                   </View>
                 ))
               ) : (
-                <Text style={simpleStyles.bodyText}>
+                <Text style={styles.bodyText}>
                   {sorted.map((s) => s.Tag?.label).filter(Boolean).join(" · ")}
                 </Text>
               )}
@@ -138,14 +145,14 @@ export function SimpleResumeDocument({ resume, htmlNodes }: Props) {
         {experienceSection?.workExperiences &&
           experienceSection.workExperiences.length > 0 && (
             <View>
-              <SectionHeading title={experienceSection.sectionTitle} />
+              <SectionHeading title={experienceSection.sectionTitle} styles={styles} />
               {experienceSection.workExperiences.map((exp, i) => (
-                <View key={exp.id ?? i} style={{ marginBottom: 8 }}>
+                <View key={exp.id ?? i} style={styles.entryBlock}>
                   <View wrap={false}>
-                    <Text style={simpleStyles.entryTitle}>
+                    <Text style={styles.entryTitle}>
                       {exp.jobTitle.label} — {exp.Company.label}
                     </Text>
-                    <Text style={simpleStyles.entryMeta}>
+                    <Text style={styles.entryMeta}>
                       {formatDate(exp.startDate)} – {formatDate(exp.endDate)}
                       {formatLocation(exp.location.label) &&
                         ` · ${formatLocation(exp.location.label)}`}
@@ -161,15 +168,15 @@ export function SimpleResumeDocument({ resume, htmlNodes }: Props) {
         {educationSection?.educations &&
           educationSection.educations.length > 0 && (
             <View>
-              <SectionHeading title={educationSection.sectionTitle} />
+              <SectionHeading title={educationSection.sectionTitle} styles={styles} />
               {educationSection.educations.map((edu, i) => (
-                <View key={edu.id ?? i} style={{ marginBottom: 8 }}>
+                <View key={edu.id ?? i} style={styles.entryBlock}>
                   <View wrap={false}>
-                    <Text style={simpleStyles.entryTitle}>{edu.institution}</Text>
-                    <Text style={simpleStyles.entryMeta}>
+                    <Text style={styles.entryTitle}>{edu.institution}</Text>
+                    <Text style={styles.entryMeta}>
                       {[edu.degree, edu.fieldOfStudy].filter(Boolean).join(", ")}
                     </Text>
-                    <Text style={simpleStyles.entryMeta}>
+                    <Text style={styles.entryMeta}>
                       {formatDate(edu.startDate)} –{" "}
                       {edu.endDate ? formatDate(edu.endDate) : "Present"}
                       {formatLocation(edu.location.label) &&
@@ -186,13 +193,13 @@ export function SimpleResumeDocument({ resume, htmlNodes }: Props) {
         {certificationSection?.licenseOrCertifications &&
           certificationSection.licenseOrCertifications.length > 0 && (
             <View>
-              <SectionHeading title={certificationSection.sectionTitle} />
+              <SectionHeading title={certificationSection.sectionTitle} styles={styles} />
               {certificationSection.licenseOrCertifications.map((cert, i) => (
-                <View key={cert.id ?? i} style={{ marginBottom: 6 }} wrap={false}>
-                  <Text style={simpleStyles.entryTitle}>{cert.title}</Text>
-                  <Text style={simpleStyles.entryMeta}>{cert.organization}</Text>
+                <View key={cert.id ?? i} style={styles.certBlock} wrap={false}>
+                  <Text style={styles.entryTitle}>{cert.title}</Text>
+                  <Text style={styles.entryMeta}>{cert.organization}</Text>
                   {(cert.issueDate || cert.expirationDate) && (
-                    <Text style={simpleStyles.entryMeta}>
+                    <Text style={styles.entryMeta}>
                       {[
                         cert.issueDate ? formatDate(cert.issueDate) : null,
                         cert.expirationDate ? formatDate(cert.expirationDate) : null,
@@ -202,7 +209,7 @@ export function SimpleResumeDocument({ resume, htmlNodes }: Props) {
                     </Text>
                   )}
                   {cert.credentialUrl && (
-                    <Text style={simpleStyles.entryMeta}>{cert.credentialUrl}</Text>
+                    <Text style={styles.entryMeta}>{cert.credentialUrl}</Text>
                   )}
                 </View>
               ))}

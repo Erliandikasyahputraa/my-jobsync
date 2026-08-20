@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { FileDown, Loader } from "lucide-react";
+import { FileDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,19 +12,19 @@ import {
 import { Button } from "../ui/button";
 import type { Resume } from "@/models/profile.model";
 import {
-  defaultResumeExportSettings,
+  RESUME_TEMPLATE_DEFAULTS,
   type ResumeExportSettings,
 } from "@/models/resumeExport.model";
 import { ExportSettingsPanel } from "./export-pdf-dialog/ExportSettingsPanel";
 import { PdfPreviewPane } from "./export-pdf-dialog/PdfPreviewPane";
 import { canExportResume } from "./resume-container/useResumePdfExport";
+import { useResumeExportSettings } from "./resume-container/useResumeExportSettings";
 import { useResumePdfPreview } from "./resume-container/useResumePdfPreview";
 
 type ExportPdfDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   resume: Resume;
-  isExporting: boolean;
   onExport: (
     settings: ResumeExportSettings,
     prepared?: { blob: Blob; filename: string } | null,
@@ -36,29 +35,23 @@ export function ExportPdfDialog({
   open,
   onOpenChange,
   resume,
-  isExporting,
   onExport,
 }: ExportPdfDialogProps) {
-  const [settings, setSettings] = useState<ResumeExportSettings>(
-    defaultResumeExportSettings,
-  );
-
-  // Settings are not persisted: reset on close, so the next open already
-  // holds the defaults on its very first render.
-  useEffect(() => {
-    if (!open) setSettings(defaultResumeExportSettings);
-  }, [open]);
+  const { settings, setSettings, ready, reset } = useResumeExportSettings(open);
+  const isDefault =
+    JSON.stringify(settings) ===
+    JSON.stringify(RESUME_TEMPLATE_DEFAULTS[settings.template]);
 
   const canExport = canExportResume(resume);
   const { blob, filename, isGenerating, error } = useResumePdfPreview(
     resume,
     settings,
-    open,
+    open && ready,
   );
 
   // Exporting mid-generation would download the template just switched away
   // from, since Export reuses the previewed blob.
-  const exportDisabled = isExporting || !canExport || isGenerating;
+  const exportDisabled = !canExport || isGenerating;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,7 +76,12 @@ export function ExportPdfDialog({
             />
           </div>
           <div className="order-1 min-h-0 shrink-0 overflow-y-auto md:order-2 md:w-[34%]">
-            <ExportSettingsPanel settings={settings} onChange={setSettings} />
+            <ExportSettingsPanel
+              settings={settings}
+              onChange={setSettings}
+              onReset={reset}
+              isDefault={isDefault}
+            />
           </div>
         </div>
 
@@ -92,7 +90,6 @@ export function ExportPdfDialog({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isExporting}
           >
             Cancel
           </Button>
@@ -107,17 +104,8 @@ export function ExportPdfDialog({
               onExport(settings, prepared);
             }}
           >
-            {isExporting ? (
-              <>
-                <Loader className="h-4 w-4 animate-spin" />
-                Generating…
-              </>
-            ) : (
-              <>
-                <FileDown className="h-4 w-4" />
-                Export
-              </>
-            )}
+            <FileDown className="h-4 w-4" />
+            Export
           </Button>
         </DialogFooter>
       </DialogContent>
