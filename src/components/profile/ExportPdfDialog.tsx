@@ -12,15 +12,20 @@ import {
 } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
-// Imported from ./types directly: the barrel re-exports generateResumePdfBlob,
-// which would pull @react-pdf/renderer into this eagerly-loaded chunk.
-import { RESUME_LAYOUT_LABELS, type ResumeLayout } from "./resume-pdf/types";
+import {
+  RESUME_LAYOUT_LABELS,
+  type ResumeExportSettings,
+  type ResumeLayout,
+} from "@/models/resumeExport.model";
 
 type ExportPdfDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isExporting: boolean;
-  onExport: (layout: ResumeLayout) => void;
+  onExport: (
+    settings: ResumeExportSettings,
+    prepared?: { blob: Blob; filename: string } | null,
+  ) => void;
 };
 
 // Paper stays white in dark mode on purpose: the PDF page is white.
@@ -190,7 +195,7 @@ export function ExportPdfDialog({
             disabled={isExporting}
             onClick={() => {
               onOpenChange(false);
-              onExport(selected);
+              onExport({ template: selected });
             }}
           >
             {isExporting ? (

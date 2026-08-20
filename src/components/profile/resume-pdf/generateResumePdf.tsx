@@ -1,7 +1,11 @@
 import React from "react";
 import { Resume, SectionType } from "@/models/profile.model";
 import { htmlToPdfNodes } from "./html-to-pdf";
-import { ResumeLayout, RESUME_LAYOUT_LABELS } from "./types";
+import {
+  RESUME_LAYOUT_LABELS,
+  defaultResumeExportSettings,
+  type ResumeExportSettings,
+} from "./types";
 import { simpleHtmlStyles } from "./styles/simple.styles";
 import { professionalHtmlStyles } from "./styles/professional.styles";
 
@@ -23,8 +27,9 @@ export function sanitizeFilename(name: string): string {
 
 export async function generateResumePdfBlob(
   resume: Resume,
-  layout: ResumeLayout = "simple",
+  settings: ResumeExportSettings = defaultResumeExportSettings,
 ): Promise<{ blob: Blob; filename: string }> {
+  const layout = settings.template;
   const htmlStyles = layout === "professional" ? professionalHtmlStyles : simpleHtmlStyles;
 
   // Parse HTML in the browser main thread before entering react-pdf's rendering context

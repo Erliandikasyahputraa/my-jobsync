@@ -3,7 +3,30 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toastError, toastSuccess } from "@/lib/toast";
 import type { Resume } from "@/models/profile.model";
-import type { ResumeLayout } from "../resume-pdf";
+import {
+  defaultResumeExportSettings,
+  type ResumeExportSettings,
+} from "@/models/resumeExport.model";
+
+// The one rule for what counts as an exportable resume. The dialog reads it to
+// disable Export up front; the hook keeps it as its own safety net.
+export function canExportResume(resume: Resume): boolean {
+  const hasName = Boolean(
+    resume.ContactInfo?.firstName?.trim() ||
+      resume.ContactInfo?.lastName?.trim(),
+  );
+  const hasSections = Boolean(
+    resume.ResumeSections?.some(
+      (s) =>
+        s.summary?.content ||
+        s.workExperiences?.length ||
+        s.educations?.length ||
+        s.licenseOrCertifications?.length ||
+        s.skills?.length,
+    ),
+  );
+  return hasName || hasSections;
+}
 
 // Owns PDF export: generating the blob, downloading it, and the follow-up
 // prompt when the resume already has a file attached.
@@ -48,19 +71,11 @@ export function useResumePdfExport(resume: Resume) {
     router.refresh();
   };
 
-  const handleExportPdf = async (layout: ResumeLayout) => {
-    const hasName =
-      resume.ContactInfo?.firstName?.trim() ||
-      resume.ContactInfo?.lastName?.trim();
-    const hasSections = resume.ResumeSections?.some(
-      (s) =>
-        s.summary?.content ||
-        s.workExperiences?.length ||
-        s.educations?.length ||
-        s.licenseOrCertifications?.length ||
-        s.skills?.length,
-    );
-    if (!hasName && !hasSections) {
+  const handleExportPdf = async (
+    settings: ResumeExportSettings = defaultResumeExportSettings,
+    prepared?: { blob: Blob; filename: string } | null,
+  ) => {
+    if (!canExportResume(resume)) {
       toastError(
         "Add your contact info and at least one section (Summary, Experience, or Education) before exporting.",
         "Nothing to export",
@@ -70,8 +85,14 @@ export function useResumePdfExport(resume: Resume) {
 
     setIsExporting(true);
     try {
-      const { generateResumePdfBlob } = await import("../resume-pdf");
-      const { blob, filename } = await generateResumePdfBlob(resume, layout);
+      // The dialog hands back the blob already on screen; generating is the
+      // fallback for a failed preview or a caller with no preview at all.
+      let output = prepared;
+      if (!output) {
+        const { generateResumePdfBlob } = await import("../resume-pdf");
+        output = await generateResumePdfBlob(resume, settings);
+      }
+      const { blob, filename } = output;
 
       if (!resume.FileId) {
         triggerDownload(blob, filename);
