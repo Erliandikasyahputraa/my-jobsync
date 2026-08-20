@@ -2,12 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
+import { Toggle } from "@/components/ui/toggle";
+import { APP_CONSTANTS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import {
+  getFromLocalStorage,
+  saveToLocalStorage,
+} from "@/utils/localstorage.utils";
 
 const PREVIEW_RESIZE_DEBOUNCE_MS = 250;
 const MAX_CANVAS_SCALE = 2;
 const EMPTY_MESSAGE =
   "Add your contact info and at least one section to preview.";
+
+type FitMode = "page" | "width";
 
 type PdfPreviewPaneProps = {
   blob: Blob | null;
@@ -40,33 +48,63 @@ export function PdfPreviewPane({
   const scrollRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
-  const widthRef = useRef(0);
-  const [width, setWidth] = useState(0);
+  const sizeRef = useRef({ width: 0, height: 0 });
+  const [size, setSize] = useState({ width: 0, height: 0 });
   const [pageCount, setPageCount] = useState(0);
   const [renderFailed, setRenderFailed] = useState(false);
+  const [fitMode, setFitMode] = useState<FitMode>("page");
+
+  // Read after mount: localStorage is unavailable during SSR, so seeding the
+  // initial state from it would cause a hydration mismatch.
+  useEffect(() => {
+    const saved = getFromLocalStorage(
+      APP_CONSTANTS.RESUME_PREVIEW_FIT_STORAGE_KEY,
+      null,
+    );
+    if (saved === "page" || saved === "width") setFitMode(saved);
+  }, []);
+
+  const onChangeFitMode = (mode: FitMode) => {
+    setFitMode(mode);
+    saveToLocalStorage(APP_CONSTANTS.RESUME_PREVIEW_FIT_STORAGE_KEY, mode);
+  };
 
   useEffect(() => {
-    const element = measureRef.current;
-    if (!element) return;
+    const measure = measureRef.current;
+    const scroll = scrollRef.current;
+    if (!measure || !scroll) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
+    // Width caps the page; the scroll box's height is what decides whether a
+    // whole page fits, so both are measured.
     const observer = new ResizeObserver((entries) => {
-      const next = Math.floor(entries[0].contentRect.width);
-      if (next <= 0 || next === widthRef.current) return;
+      let { width, height } = sizeRef.current;
+      for (const entry of entries) {
+        if (entry.target === measure) {
+          width = Math.floor(entry.contentRect.width);
+        } else {
+          height = Math.floor(entry.contentRect.height);
+        }
+      }
+      if (width <= 0 || height <= 0) return;
+      if (width === sizeRef.current.width && height === sizeRef.current.height) {
+        return;
+      }
+      const commit = () => {
+        sizeRef.current = { width, height };
+        setSize({ width, height });
+      };
       // First measurement lands at once; later changes share the 250ms debounce.
-      if (widthRef.current === 0) {
-        widthRef.current = next;
-        setWidth(next);
+      if (sizeRef.current.width === 0) {
+        commit();
         return;
       }
       clearTimeout(timer);
-      timer = setTimeout(() => {
-        widthRef.current = next;
-        setWidth(next);
-      }, PREVIEW_RESIZE_DEBOUNCE_MS);
+      timer = setTimeout(commit, PREVIEW_RESIZE_DEBOUNCE_MS);
     });
 
-    observer.observe(element);
+    observer.observe(measure);
+    observer.observe(scroll);
     return () => {
       clearTimeout(timer);
       observer.disconnect();
@@ -74,7 +112,8 @@ export function PdfPreviewPane({
   }, []);
 
   useEffect(() => {
-    if (!blob || width <= 0) return;
+    const { width, height } = size;
+    if (!blob || width <= 0 || height <= 0) return;
 
     let cancelled = false;
     let renderTask: { cancel: () => void } | null = null;
@@ -105,8 +144,17 @@ export function PdfPreviewPane({
           if (cancelled) return;
 
           const unscaled = page.getViewport({ scale: 1 });
+          // Fit page also bounds by height, so a page is whole rather than
+          // cropped; fit width ignores height and lets the pane scroll.
+          const fitted =
+            fitMode === "width"
+              ? width
+              : Math.min(
+                  width,
+                  Math.floor(height * (unscaled.width / unscaled.height)),
+                );
           const viewport = page.getViewport({
-            scale: (width / unscaled.width) * dpr,
+            scale: (fitted / unscaled.width) * dpr,
           });
 
           // Detached canvases: the mounted set is swapped only once the whole
@@ -114,7 +162,8 @@ export function PdfPreviewPane({
           const canvas = document.createElement("canvas");
           canvas.width = Math.floor(viewport.width);
           canvas.height = Math.floor(viewport.height);
-          canvas.className = "block h-auto w-full bg-white shadow-sm";
+          canvas.style.width = `${fitted}px`;
+          canvas.className = "block h-auto bg-white shadow-sm";
 
           const task = page.render({ canvas, viewport });
           renderTask = task;
@@ -147,7 +196,7 @@ export function PdfPreviewPane({
       // the call, so the rejection is swallowed rather than left floating.
       void document_?.destroy().catch(() => {});
     };
-  }, [blob, width]);
+  }, [blob, size, fitMode]);
 
   const hasPages = pageCount > 0;
   const showEmpty = !canExport;
@@ -167,11 +216,35 @@ export function PdfPreviewPane({
 
   return (
     <div className={cn("flex min-h-0 flex-col gap-2", className)}>
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium">Preview</span>
-        <span className="text-xs text-muted-foreground">
-          {hasPages ? pageLabel(pageCount) : ""}
-        </span>
+        <div className="flex items-center gap-2">
+          {hasPages && (
+            <div className="flex items-center rounded-md border p-0.5">
+              <Toggle
+                size="sm"
+                pressed={fitMode === "page"}
+                onPressedChange={() => onChangeFitMode("page")}
+                aria-label="Fit whole page"
+                className="h-6 px-2 text-xs"
+              >
+                Fit page
+              </Toggle>
+              <Toggle
+                size="sm"
+                pressed={fitMode === "width"}
+                onPressedChange={() => onChangeFitMode("width")}
+                aria-label="Fit page width"
+                className="h-6 px-2 text-xs"
+              >
+                Fit width
+              </Toggle>
+            </div>
+          )}
+          <span className="text-xs text-muted-foreground">
+            {hasPages ? pageLabel(pageCount) : ""}
+          </span>
+        </div>
       </div>
 
       <div
@@ -186,7 +259,7 @@ export function PdfPreviewPane({
             ref={pagesRef}
             aria-hidden="true"
             className={cn(
-              "flex flex-col gap-4 transition-opacity",
+              "flex flex-col items-center gap-4 transition-opacity",
               showOverlaySpinner && "opacity-50",
             )}
           />

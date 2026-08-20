@@ -284,10 +284,11 @@ function ResumeContainer({
         />
       )}
 
-      {/* PDF EXPORT TEMPLATE PICKER */}
+      {/* PDF EXPORT PREVIEW + SETTINGS */}
       <ExportPdfDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
+        resume={resume}
         isExporting={isExporting}
         onExport={handleExportPdf}
       />
