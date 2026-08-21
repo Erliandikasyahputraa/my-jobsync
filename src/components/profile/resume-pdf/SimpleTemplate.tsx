@@ -2,6 +2,7 @@ import React from "react";
 import { Document, Link, Page, Text, View } from "@react-pdf/renderer";
 import { format } from "date-fns";
 import { Resume, SectionType } from "@/models/profile.model";
+import { buildContactParts } from "../pdf-contact-parts";
 import type { SimpleStyles } from "./styles/simple.styles";
 import { ResumeHtmlNodes } from "./generateResumePdf";
 
@@ -51,18 +52,7 @@ export function SimpleResumeDocument({ resume, htmlNodes, styles }: Props) {
     (s) => s.sectionType === SectionType.CERTIFICATION,
   );
 
-  type ContactPart = { text: string; href?: string };
-  const contactParts: ContactPart[] = [
-    ContactInfo?.email ? { text: ContactInfo.email } : null,
-    ContactInfo?.phone ? { text: ContactInfo.phone } : null,
-    ContactInfo?.address ? { text: ContactInfo.address } : null,
-    ContactInfo?.url1
-      ? { text: ContactInfo.url1.replace(/^https?:\/\/(www\.)?/, ""), href: ContactInfo.url1 }
-      : null,
-    ContactInfo?.url2
-      ? { text: ContactInfo.url2.replace(/^https?:\/\/(www\.)?/, ""), href: ContactInfo.url2 }
-      : null,
-  ].filter((p): p is ContactPart => p !== null);
+  const contactParts = buildContactParts(ContactInfo);
 
   return (
     <Document
