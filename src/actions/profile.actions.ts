@@ -20,7 +20,11 @@ export {
 
 export { uploadFile, deleteFile } from "./profile/files";
 
-export { addContactInfo, updateContactInfo } from "./profile/contactInfo";
+export {
+  addContactInfo,
+  updateContactInfo,
+  getDefaultContactInfo,
+} from "./profile/contactInfo";
 
 export { addResumeSummary, updateResumeSummary } from "./profile/summary";
 

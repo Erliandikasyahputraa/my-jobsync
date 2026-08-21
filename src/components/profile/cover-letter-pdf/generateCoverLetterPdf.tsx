@@ -38,7 +38,8 @@ export async function generateCoverLetterPdfBlob(
   );
 
   const blob = await pdf(document as any).toBlob();
-  // No layout suffix: a letter has exactly one style.
-  const filename = `${sanitizeFilename(letter.title, "cover-letter")}.pdf`;
+  // A letter has exactly one style, so the suffix names the document type
+  // rather than a layout — it is what tells the two exports apart on disk.
+  const filename = `${sanitizeFilename(letter.title, "Untitled")}_cover_letter.pdf`;
   return { blob, filename };
 }

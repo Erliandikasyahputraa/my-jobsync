@@ -1,6 +1,7 @@
 "use client";
 import {
   Copy,
+  FileDown,
   FilePenLine,
   MoreVertical,
   Paperclip,
@@ -44,6 +45,7 @@ type DocumentTableProps = {
   documents: ProfileDocument[];
   editResume: (doc: ProfileDocument) => void;
   editCoverLetter: (doc: ProfileDocument) => void;
+  exportCoverLetter: (doc: ProfileDocument) => void;
   copyResume: (doc: ProfileDocument) => void;
   reloadDocuments: () => void;
   defaultResumeId?: string | null;
@@ -53,6 +55,7 @@ function DocumentTable({
   documents,
   editResume,
   editCoverLetter,
+  exportCoverLetter,
   copyResume,
   reloadDocuments,
   defaultResumeId,
@@ -247,13 +250,23 @@ function DocumentTable({
                           )}
                         </>
                       ) : (
-                        <DropdownMenuItem
-                          className="cursor-pointer"
-                          onClick={() => editCoverLetter(doc)}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit Cover Letter
-                        </DropdownMenuItem>
+                        <>
+                          <DropdownMenuItem
+                            className="cursor-pointer"
+                            onClick={() => editCoverLetter(doc)}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit Cover Letter
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer"
+                            onClick={() => exportCoverLetter(doc)}
+                            data-testid="export-cover-letter-menu-item"
+                          >
+                            <FileDown className="mr-2 h-4 w-4" />
+                            Export to PDF
+                          </DropdownMenuItem>
+                        </>
                       )}
                       <DropdownMenuItem
                         className="text-red-600 cursor-pointer"

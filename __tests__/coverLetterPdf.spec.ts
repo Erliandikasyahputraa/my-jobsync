@@ -64,12 +64,12 @@ afterEach(() => {
 });
 
 describe("generateCoverLetterPdfBlob — filename", () => {
-  it("derives the filename from the title, with no layout suffix", async () => {
+  it("derives the filename from the title, with the document-type suffix", async () => {
     const { filename } = await generate({
       title: "Software Engineer - Google",
       content: "<p>Hi</p>",
     });
-    expect(filename).toBe("Software Engineer - Google.pdf");
+    expect(filename).toBe("Software Engineer - Google_cover_letter.pdf");
   });
 
   it("strips path and control characters from the title", async () => {
@@ -77,15 +77,15 @@ describe("generateCoverLetterPdfBlob — filename", () => {
       title: "Dev/Ops: \x00report\x1f",
       content: "<p>Hi</p>",
     });
-    expect(filename).toBe("DevOps report.pdf");
+    expect(filename).toBe("DevOps report_cover_letter.pdf");
   });
 
-  it("falls back to 'cover-letter' when the title sanitizes to nothing", async () => {
+  it("falls back to 'Untitled' when the title sanitizes to nothing", async () => {
     const { filename } = await generate({
       title: '///:*?"<>|',
       content: "<p>Hi</p>",
     });
-    expect(filename).toBe("cover-letter.pdf");
+    expect(filename).toBe("Untitled_cover_letter.pdf");
   });
 });
 
