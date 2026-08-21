@@ -12,8 +12,6 @@ import {
 
 const PREVIEW_RESIZE_DEBOUNCE_MS = 250;
 const MAX_CANVAS_SCALE = 2;
-const EMPTY_MESSAGE =
-  "Add your contact info and at least one section to preview.";
 
 type FitMode = "page" | "width";
 
@@ -22,6 +20,10 @@ type PdfPreviewPaneProps = {
   isGenerating: boolean;
   hasError: boolean;
   canExport: boolean;
+  /** Names the scroll region, e.g. "Resume preview". */
+  previewLabel: string;
+  /** Shown when canExport is false. */
+  emptyMessage: string;
   className?: string;
 };
 
@@ -43,6 +45,8 @@ export function PdfPreviewPane({
   isGenerating,
   hasError,
   canExport,
+  previewLabel,
+  emptyMessage,
   className,
 }: PdfPreviewPaneProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -217,7 +221,7 @@ export function PdfPreviewPane({
   const showOverlaySpinner = canExport && !showError && hasPages && isGenerating;
 
   const status = showEmpty
-    ? EMPTY_MESSAGE
+    ? emptyMessage
     : showError
       ? "Preview unavailable"
       : isGenerating
@@ -262,7 +266,7 @@ export function PdfPreviewPane({
       <div
         ref={scrollRef}
         aria-label={
-          hasPages ? `Resume preview, ${pageLabel(pageCount)}` : "Resume preview"
+          hasPages ? `${previewLabel}, ${pageLabel(pageCount)}` : previewLabel
         }
         className="relative min-h-0 flex-1 overflow-y-auto rounded-md border bg-muted p-4"
       >
@@ -280,7 +284,7 @@ export function PdfPreviewPane({
         {(showEmpty || showError || showFirstSpinner) && (
           <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-muted-foreground">
             {showEmpty ? (
-              EMPTY_MESSAGE
+              emptyMessage
             ) : showError ? (
               "Preview unavailable"
             ) : (

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useExportSettings } from "@/components/pdf-export/useExportSettings";
 import { APP_CONSTANTS } from "@/lib/constants";
 import {
   clampNumericField,
@@ -14,10 +14,6 @@ import {
   type ResumeExportSettings,
   type ResumeLayout,
 } from "@/models/resumeExport.model";
-import {
-  getFromLocalStorage,
-  saveToLocalStorage,
-} from "@/utils/localstorage.utils";
 
 const KEY = APP_CONSTANTS.RESUME_EXPORT_SETTINGS_STORAGE_KEY;
 
@@ -57,44 +53,25 @@ export function coerceResumeExportSettings(
   return next;
 }
 
-function readStored(): ResumeExportSettings {
-  try {
-    return coerceResumeExportSettings(getFromLocalStorage(KEY, null));
-  } catch {
-    // getFromLocalStorage calls JSON.parse unguarded.
-    return { ...defaultResumeExportSettings };
-  }
-}
-
-// Reads on open rather than at mount: localStorage is unavailable during SSR,
-// and `ready` holds the preview back one commit so it generates once, with
-// the stored settings, instead of once with the defaults and again after.
+// Reads on open, keeping the resume's own rule on top: picking a template
+// re-seeds the rest, because each template's defaults are its own shipped
+// literals and carrying the previous one's numbers across would silently
+// restyle the template the user just chose. The letter has no template, so
+// this rule stays here rather than moving into the shared hook.
 export function useResumeExportSettings(open: boolean) {
-  const [settings, setSettings] = useState<ResumeExportSettings>(
-    defaultResumeExportSettings,
-  );
-  const [ready, setReady] = useState(false);
+  const { settings, setSettings, ready } = useExportSettings({
+    storageKey: KEY,
+    defaults: defaultResumeExportSettings,
+    coerce: coerceResumeExportSettings,
+    open,
+  });
 
-  useEffect(() => {
-    if (!open) {
-      setReady(false);
-      return;
-    }
-    setSettings(readStored());
-    setReady(true);
-  }, [open]);
-
-  // Picking a template re-seeds the rest: each template's defaults are its
-  // own shipped literals, so carrying the previous one's numbers across
-  // would silently restyle the template the user just chose.
-  const update = (next: ResumeExportSettings) => {
-    const applied =
+  const update = (next: ResumeExportSettings) =>
+    setSettings(
       next.template === settings.template
         ? next
-        : { ...RESUME_TEMPLATE_DEFAULTS[next.template] };
-    setSettings(applied);
-    saveToLocalStorage(KEY, applied);
-  };
+        : { ...RESUME_TEMPLATE_DEFAULTS[next.template] },
+    );
 
   return {
     settings,
