@@ -3,11 +3,11 @@ import { defaultResumeExportSettings } from "@/models/resumeExport.model";
 import {
   BASE_FONT_SIZE,
   FONT_QUARTETS,
-  styleTokens,
-} from "@/components/profile/resume-pdf/styles/tokens";
+} from "@/components/pdf-export/tokens";
+import { resumeStyleTokens } from "@/components/profile/resume-pdf/styles/tokens";
 
 const tokens = (patch: Partial<typeof defaultResumeExportSettings> = {}) =>
-  styleTokens({ ...defaultResumeExportSettings, ...patch });
+  resumeStyleTokens({ ...defaultResumeExportSettings, ...patch });
 
 describe("FONT_QUARTETS", () => {
   it("names all four faces of each standard-14 family", () => {

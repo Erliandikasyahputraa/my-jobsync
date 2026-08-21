@@ -1,14 +1,14 @@
 import { StyleSheet } from "@react-pdf/renderer";
-import { HtmlStyleSet } from "../types";
+import { HtmlStyleSet } from "@/components/pdf-export/types";
 import type { ResumeExportSettings } from "@/models/resumeExport.model";
-import { styleTokens } from "./tokens";
+import { resumeStyleTokens } from "./tokens";
 
 const ACCENT = "#34506e";
 const NEAR_BLACK = "#1a1a1a";
 const GRAY = "#555555";
 
 export function buildProfessionalStyles(settings: ResumeExportSettings) {
-  const t = styleTokens(settings);
+  const t = resumeStyleTokens(settings);
 
   const styles = StyleSheet.create({
     page: {

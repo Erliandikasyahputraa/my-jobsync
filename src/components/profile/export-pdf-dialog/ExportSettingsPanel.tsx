@@ -20,9 +20,11 @@ import {
 import {
   clampNumericField,
   formatSettingValue,
-  RESUME_FONT_LABELS,
+  PDF_FONT_LABELS,
+  PDF_NUMERIC_SETTINGS,
+} from "@/models/pdfExport.model";
+import {
   RESUME_LAYOUT_LABELS,
-  RESUME_NUMERIC_SETTINGS,
   type ResumeExportSettings,
   type ResumeNumericSetting,
 } from "@/models/resumeExport.model";
@@ -87,7 +89,7 @@ function StepperRow({
   value: number;
   onCommit: (value: number) => void;
 }) {
-  const spec = RESUME_NUMERIC_SETTINGS[field];
+  const spec = PDF_NUMERIC_SETTINGS[field];
   const id = `resume-export-${field}`;
   const [draft, setDraft] = useState(() => String(value));
 
@@ -197,7 +199,7 @@ export function ExportSettingsPanel({
     onChange({ ...settings, [field]: value });
 
   const typographySummary = [
-    RESUME_FONT_LABELS[settings.font],
+    PDF_FONT_LABELS[settings.font],
     formatSettingValue("fontSize", settings.fontSize),
     `${formatSettingValue("lineHeight", settings.lineHeight)} line`,
   ].join(" • ");
@@ -225,7 +227,7 @@ export function ExportSettingsPanel({
           id="resume-export-font"
           label="Font"
           value={settings.font}
-          labels={RESUME_FONT_LABELS}
+          labels={PDF_FONT_LABELS}
           onSelect={(font) => onChange({ ...settings, font })}
         />
         <StepperRow

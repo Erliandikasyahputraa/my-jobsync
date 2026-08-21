@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { triggerDownload } from "@/components/pdf-export/download";
 import { toastError, toastSuccess } from "@/lib/toast";
 import type { Resume } from "@/models/profile.model";
 import {
@@ -38,15 +39,6 @@ export function useResumePdfExport(resume: Resume) {
     filename: string;
   } | null>(null);
   const [showAttachConfirm, setShowAttachConfirm] = useState(false);
-
-  const triggerDownload = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   const uploadPdfAsAttachment = async (
     blob: Blob,

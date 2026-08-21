@@ -3,15 +3,16 @@ import { useEffect, useState } from "react";
 import { APP_CONSTANTS } from "@/lib/constants";
 import {
   clampNumericField,
+  PDF_FONT_LABELS,
+  type PdfFont,
+} from "@/models/pdfExport.model";
+import {
   defaultResumeExportSettings,
-  RESUME_FONT_LABELS,
   RESUME_LAYOUT_LABELS,
-  RESUME_NUMERIC_SETTINGS,
+  RESUME_NUMERIC_FIELDS,
   RESUME_TEMPLATE_DEFAULTS,
   type ResumeExportSettings,
-  type ResumeFont,
   type ResumeLayout,
-  type ResumeNumericSetting,
 } from "@/models/resumeExport.model";
 import {
   getFromLocalStorage,
@@ -38,16 +39,19 @@ export function coerceResumeExportSettings(
       : defaultResumeExportSettings.template;
   const next = { ...RESUME_TEMPLATE_DEFAULTS[template] };
 
-  if (typeof raw.font === "string" && raw.font in RESUME_FONT_LABELS) {
-    next.font = raw.font as ResumeFont;
+  if (typeof raw.font === "string" && raw.font in PDF_FONT_LABELS) {
+    next.font = raw.font as PdfFont;
   }
 
-  // Numeric settings: clampNumericField returns the field's default for
-  // anything that is not a finite number, so a missing key needs no guard.
-  for (const field of Object.keys(
-    RESUME_NUMERIC_SETTINGS,
-  ) as ResumeNumericSetting[]) {
-    next[field] = clampNumericField(field, raw[field], template);
+  // Iterates the resume's own field list, never the merged spec table.
+  // clampNumericField returns the passed fallback for anything that is not
+  // a finite number, so a missing key needs no guard.
+  for (const field of RESUME_NUMERIC_FIELDS) {
+    next[field] = clampNumericField(
+      field,
+      raw[field],
+      RESUME_TEMPLATE_DEFAULTS[template][field],
+    );
   }
 
   return next;

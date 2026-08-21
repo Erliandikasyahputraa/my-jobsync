@@ -1,10 +1,10 @@
 import { StyleSheet } from "@react-pdf/renderer";
-import { HtmlStyleSet } from "../types";
+import { HtmlStyleSet } from "@/components/pdf-export/types";
 import type { ResumeExportSettings } from "@/models/resumeExport.model";
-import { styleTokens } from "./tokens";
+import { resumeStyleTokens } from "./tokens";
 
 export function buildSimpleStyles(settings: ResumeExportSettings) {
-  const t = styleTokens(settings);
+  const t = resumeStyleTokens(settings);
 
   const styles = StyleSheet.create({
     page: {

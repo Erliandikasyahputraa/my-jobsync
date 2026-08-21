@@ -1,12 +1,13 @@
 import React from "react";
 import { Resume, SectionType } from "@/models/profile.model";
-import { htmlToPdfNodes } from "./html-to-pdf";
+import { htmlToPdfNodes } from "@/components/pdf-export/html-to-pdf";
+import { sanitizeFilename } from "@/components/pdf-export/download";
+import type { HtmlStyleSet } from "@/components/pdf-export/types";
 import {
   RESUME_LAYOUT_LABELS,
   defaultResumeExportSettings,
   type ResumeExportSettings,
-} from "./types";
-import type { HtmlStyleSet } from "./types";
+} from "@/models/resumeExport.model";
 import { buildSimpleStyles } from "./styles/simple.styles";
 import { buildProfessionalStyles } from "./styles/professional.styles";
 
@@ -15,16 +16,6 @@ export type ResumeHtmlNodes = {
   experiences: React.ReactElement[][];
   educations: React.ReactElement[][];
 };
-
-export function sanitizeFilename(name: string): string {
-  const sanitized = name
-    .replace(/[\x00-\x1f\x7f]/g, "")
-    .replace(/[/\\:*?"<>|]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 200);
-  return sanitized || "resume";
-}
 
 // Parse HTML on the main thread before entering react-pdf's rendering context
 function buildHtmlNodes(
@@ -92,16 +83,6 @@ export async function generateResumePdfBlob(
   }
 
   const blob = await pdf(document as any).toBlob();
-  const filename = `${sanitizeFilename(resume.title)} - ${RESUME_LAYOUT_LABELS[layout]}.pdf`;
+  const filename = `${sanitizeFilename(resume.title, "resume")} - ${RESUME_LAYOUT_LABELS[layout]}.pdf`;
   return { blob, filename };
-}
-
-export async function downloadResumePdf(resume: Resume): Promise<void> {
-  const { blob, filename } = await generateResumePdfBlob(resume);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
