@@ -35,31 +35,31 @@ describe("safeEntryName", () => {
 describe("importedFilePath", () => {
   const uploads = APP_CONSTANTS.UPLOADS_DIR;
 
-  it("writes inside the resumes subdirectory, never UPLOADS_DIR itself", () => {
-    const p = importedFilePath("new-id", "resume.pdf", "pdf");
-    expect(p).toBe(path.join(uploads, "files", "resumes", "new-id-resume.pdf"));
+  it("writes inside the user's namespace", () => {
+    const p = importedFilePath("user-123", "new-id", "resume.pdf", "pdf");
+    expect(p).toBe("user-123/new-id-resume.pdf");
   });
 
   it("never persists a path carried in the backup", () => {
-    const p = importedFilePath("new-id", "/data/dev.db", "pdf");
-    expect(p).toBe(path.join(uploads, "files", "resumes", "new-id-dev.pdf"));
-    expect(p.startsWith(path.join(uploads, "files", "resumes"))).toBe(true);
+    const p = importedFilePath("user-123", "new-id", "/data/dev.db", "pdf");
+    expect(p).toBe("user-123/new-id-dev.pdf");
+    expect(p.startsWith("user-123/")).toBe(true);
   });
 
   // The extension follows the sniffed bytes, not the name in the backup, so a
   // payload cannot choose what the file on disk is called.
   it("overrides the carried extension with the sniffed one", () => {
-    expect(importedFilePath("new-id", "resume.pdf.exe", "docx")).toBe(
-      path.join(uploads, "files", "resumes", "new-id-resume.pdf.docx"),
+    expect(importedFilePath("user-123", "new-id", "resume.pdf.exe", "docx")).toBe(
+      "user-123/new-id-resume.pdf.docx",
     );
-    expect(importedFilePath("new-id", "payload.sh", "pdf")).toBe(
-      path.join(uploads, "files", "resumes", "new-id-payload.pdf"),
+    expect(importedFilePath("user-123", "new-id", "payload.sh", "pdf")).toBe(
+      "user-123/new-id-payload.pdf",
     );
   });
 
   it("cannot collide for two files sharing an original name", () => {
-    expect(importedFilePath("id-a", "resume.pdf", "pdf")).not.toBe(
-      importedFilePath("id-b", "resume.pdf", "pdf"),
+    expect(importedFilePath("user-123", "id-a", "resume.pdf", "pdf")).not.toBe(
+      importedFilePath("user-123", "id-b", "resume.pdf", "pdf"),
     );
   });
 });
