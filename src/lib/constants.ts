@@ -35,6 +35,7 @@ export const APP_CONSTANTS = {
   SIDEBAR_STORAGE_KEY: "sidebar-expanded",
   DASHBOARD_WEEKLY_CHART_STORAGE_KEY: "dashboard-weekly-chart-tab",
   DASHBOARD_RECENT_CARD_STORAGE_KEY: "dashboard-recent-card-tab",
+  DASHBOARD_JOBS_ACTIVITY_STORAGE_KEY: "dashboard-jobs-activity-tab",
   LAST_JOB_LOCATION_STORAGE_KEY: "last-job-location",
   LAST_JOB_SOURCE_STORAGE_KEY: "last-job-source",
   JOBS_VIEW_MODE_STORAGE_KEY: "jobs-view-mode",

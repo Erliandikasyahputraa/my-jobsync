@@ -206,16 +206,10 @@ test.describe("Dashboard page", () => {
   test("should toggle the recent, weekly, jobs and activities cards", async ({
     page,
   }) => {
-    const numberToggle = page.getByTestId("number-card-toggle-group");
-    await numberToggle.getByRole("button", { name: "30d" }).click();
+    const jobsActivityToggle = page.getByTestId("jobs-activity-toggle-group");
+    await jobsActivityToggle.getByRole("button", { name: "30d" }).click();
     await expect(
-      numberToggle.getByRole("button", { name: "30d" }),
-    ).toHaveClass(/bg-primary/);
-
-    const topActivitiesToggle = page.getByTestId("top-activities-toggle-group");
-    await topActivitiesToggle.getByRole("button", { name: "30d" }).click();
-    await expect(
-      topActivitiesToggle.getByRole("button", { name: "30d" }),
+      jobsActivityToggle.getByRole("button", { name: "30d" }),
     ).toHaveClass(/bg-primary/);
 
     const recentToggle = page.getByTestId("recent-card-toggle-group");

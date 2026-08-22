@@ -1,7 +1,4 @@
 import prisma from "@/lib/db";
-import { calculatePercentageDifference } from "@/lib/utils";
-import { Prisma } from "@prisma/client";
-import { subDays } from "date-fns";
 import { requireUser } from "../shared";
 import { getLocalDayRange } from "./shared";
 
@@ -10,87 +7,76 @@ export interface TopActivityType {
   hours: number;
 }
 
+export interface JobsActivitySummary {
+  jobsApplied: number;
+  topActivities: TopActivityType[];
+  otherHours: number;
+  totalHours: number;
+}
+
+const roundToTenth = (hours: number) => Math.round(hours * 10) / 10;
+
+// One read for the merged Jobs & Activity card. Both halves share
+// getLocalDayRange so "7d" means the same window on each; the retired
+// getJobsAppliedForPeriod counted a rolling 7x24h window instead.
 // Auth guard sits outside the try so an unauthenticated call surfaces
 // "Not authenticated" rather than this function's generic message.
-export const getJobsAppliedForPeriod = async (
+export const getJobsActivitySummary = async (
   daysAgo: number,
-): Promise<any | undefined> => {
+): Promise<JobsActivitySummary> => {
   const user = await requireUser();
 
   try {
-    const startDate1 = subDays(new Date(), daysAgo);
-    const startDate2 = subDays(new Date(), daysAgo * 2);
-    const endDate = new Date();
-    const query = (date: Date): Prisma.JobCountArgs => ({
-      where: {
-        userId: user.id,
-        applied: true,
-        appliedDate: {
-          gte: date,
-          lt: endDate,
-        },
-      },
-    });
+    const { start, end } = getLocalDayRange(daysAgo - 1);
 
-    const [count, count2] = await prisma.$transaction([
-      prisma.job.count(query(startDate1)),
-      prisma.job.count(query(startDate2)),
+    const [jobsApplied, activities] = await prisma.$transaction([
+      prisma.job.count({
+        where: {
+          userId: user.id,
+          applied: true,
+          appliedDate: { gte: start, lte: end },
+        },
+      }),
+      prisma.activity.findMany({
+        where: {
+          userId: user.id,
+          startTime: { gte: start, lte: end },
+        },
+        select: {
+          duration: true,
+          activityType: { select: { label: true } },
+        },
+      }),
     ]);
-    const difference = Math.abs(count2 - count);
-    const trend = calculatePercentageDifference(difference, count);
-    return { count, trend };
-  } catch (error) {
-    const msg = "Failed to calculate job count";
-    console.error(msg, error);
-    throw new Error(msg);
-  }
-};
-
-// Auth guard sits outside the try, as above.
-export const getTopActivityTypesByDuration = async (
-  daysAgo: number,
-): Promise<TopActivityType[]> => {
-  const user = await requireUser();
-
-  try {
-    const { start: startDate, end: today } = getLocalDayRange(daysAgo - 1);
-
-    const activities = await prisma.activity.findMany({
-      where: {
-        userId: user.id,
-        startTime: {
-          gte: startDate,
-          lte: today,
-        },
-      },
-      select: {
-        duration: true,
-        activityType: {
-          select: {
-            label: true,
-          },
-        },
-      },
-    });
 
     const groupedByType = activities.reduce(
       (acc: Record<string, number>, activity) => {
         const label = activity.activityType?.label || "Unknown";
-        const durationInHours = (activity.duration || 0) / 60;
-        acc[label] = (acc[label] || 0) + durationInHours;
+        acc[label] = (acc[label] || 0) + (activity.duration || 0) / 60;
         return acc;
       },
       {},
     );
 
     const sorted = Object.entries(groupedByType)
-      .map(([label, hours]) => ({ label, hours: Math.round(hours * 10) / 10 }))
-      .sort((a, b) => b.hours - a.hours)
-      .slice(0, 3);
+      .map(([label, hours]) => ({ label, hours }))
+      .sort((a, b) => b.hours - a.hours);
 
-    return sorted;
+    const topActivities = sorted
+      .slice(0, 3)
+      .map(({ label, hours }) => ({ label, hours: roundToTenth(hours) }));
+    const otherHours = roundToTenth(
+      sorted.slice(3).reduce((sum, entry) => sum + entry.hours, 0),
+    );
+    // Totalled from the rounded parts so the number in the donut's
+    // center always equals the legend beside it.
+    const totalHours = roundToTenth(
+      topActivities.reduce((sum, entry) => sum + entry.hours, 0) + otherHours,
+    );
+
+    return { jobsApplied, topActivities, otherHours, totalHours };
   } catch (error) {
-    const msg = "Failed to fetch top activity types";
+    const msg = "Failed to fetch jobs and activity summary";
     console.error(msg, error);
     throw new Error(msg);
   }
