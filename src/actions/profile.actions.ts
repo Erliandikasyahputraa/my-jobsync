@@ -22,9 +22,6 @@ import {
 import { buildCopyTitle, ensureUniqueTitle } from "@/lib/resumeCopyTitle";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import path from "path";
-import fs from "fs";
-import { writeFile } from "fs/promises";
 import { supabase } from "@/lib/supabase";
 
 // Canonical IDOR guard for actions that only need to confirm resume ownership

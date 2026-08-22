@@ -185,9 +185,6 @@ export const APP_CONSTANTS = {
   // Must not be "ai-panel-width" — that key belongs to the three AI sheets.
   AGENT_CHAT_PANEL_WIDTH_KEY: "agent-chat-width",
 
-  // File uploads
-  UPLOADS_DIR: process.env.NODE_ENV !== "production" ? "data" : "/data",
-
   // Backup caps. Everything is held in RAM at once, so the upload cap is what
   // bounds memory on a box also running Next and the scheduler; the
   // uncompressed cap is the zip-bomb guard. 50 MB rather than the spec's 25:
