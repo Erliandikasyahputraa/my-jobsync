@@ -1,4 +1,3 @@
-import fs from "fs/promises";
 import path from "path";
 import { supabase } from "@/lib/supabase";
 import type JSZip from "jszip";
@@ -377,7 +376,7 @@ export async function importBackup(
   }
 
   // Without this every restore-over-existing leaves the previous account's
-  // resume files in UPLOADS_DIR forever with no row pointing at them.
+  // resume files in storage forever with no row pointing at them.
   for (const filePath of oldFilePaths) {
     if (writtenPaths.includes(filePath)) continue;
     if (supabase) {
