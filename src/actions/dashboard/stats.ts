@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { calculatePercentageDifference } from "@/lib/utils";
 import { requireUser } from "../shared";
 import { getLocalDayRange } from "./shared";
 
@@ -9,6 +10,7 @@ export interface TopActivityType {
 
 export interface JobsActivitySummary {
   jobsApplied: number;
+  jobsTrend: number;
   topActivities: TopActivityType[];
   otherHours: number;
   totalHours: number;
@@ -28,13 +30,22 @@ export const getJobsActivitySummary = async (
 
   try {
     const { start, end } = getLocalDayRange(daysAgo - 1);
+    // The equally long window immediately before this one, for the trend.
+    const { start: priorStart } = getLocalDayRange(daysAgo * 2 - 1);
 
-    const [jobsApplied, activities] = await prisma.$transaction([
+    const [jobsApplied, priorJobs, activities] = await prisma.$transaction([
       prisma.job.count({
         where: {
           userId: user.id,
           applied: true,
           appliedDate: { gte: start, lte: end },
+        },
+      }),
+      prisma.job.count({
+        where: {
+          userId: user.id,
+          applied: true,
+          appliedDate: { gte: priorStart, lt: start },
         },
       }),
       prisma.activity.findMany({
@@ -74,7 +85,10 @@ export const getJobsActivitySummary = async (
       topActivities.reduce((sum, entry) => sum + entry.hours, 0) + otherHours,
     );
 
-    return { jobsApplied, topActivities, otherHours, totalHours };
+    const jobsTrend =
+      calculatePercentageDifference(priorJobs, jobsApplied) ?? 0;
+
+    return { jobsApplied, jobsTrend, topActivities, otherHours, totalHours };
   } catch (error) {
     const msg = "Failed to fetch jobs and activity summary";
     console.error(msg, error);

@@ -354,6 +354,7 @@ describe("Dashboard Actions", () => {
       (getCurrentUser as any).mockResolvedValue(mockUser);
       (prisma.$transaction as any).mockResolvedValue([
         12,
+        8,
         activityRows([
           ["Jobsync", 600],
           ["Learning", 300],
@@ -379,6 +380,7 @@ describe("Dashboard Actions", () => {
       (getCurrentUser as any).mockResolvedValue(mockUser);
       (prisma.$transaction as any).mockResolvedValue([
         0,
+        0,
         activityRows([
           ["A", 50],
           ["B", 25],
@@ -399,6 +401,7 @@ describe("Dashboard Actions", () => {
       (getCurrentUser as any).mockResolvedValue(mockUser);
       (prisma.$transaction as any).mockResolvedValue([
         3,
+        3,
         activityRows([
           ["Jobsync", 120],
           ["Learning", 60],
@@ -414,12 +417,13 @@ describe("Dashboard Actions", () => {
 
     it("returns empty results when nothing is logged", async () => {
       (getCurrentUser as any).mockResolvedValue(mockUser);
-      (prisma.$transaction as any).mockResolvedValue([0, []]);
+      (prisma.$transaction as any).mockResolvedValue([0, 0, []]);
 
       const result = await getJobsActivitySummary(7);
 
       expect(result).toEqual({
         jobsApplied: 0,
+        jobsTrend: 0,
         topActivities: [],
         otherHours: 0,
         totalHours: 0,
@@ -430,12 +434,40 @@ describe("Dashboard Actions", () => {
       (getCurrentUser as any).mockResolvedValue(mockUser);
       (prisma.$transaction as any).mockResolvedValue([
         0,
+        0,
         [{ duration: 90, activityType: null }],
       ]);
 
       const result = await getJobsActivitySummary(7);
 
       expect(result.topActivities).toEqual([{ label: "Unknown", hours: 1.5 }]);
+    });
+
+    it("reports the percent change against the preceding window", async () => {
+      (getCurrentUser as any).mockResolvedValue(mockUser);
+      (prisma.$transaction as any).mockResolvedValue([15, 10, []]);
+
+      const result = await getJobsActivitySummary(7);
+
+      expect(result.jobsTrend).toBe(50);
+    });
+
+    it("reports a negative trend when the count fell", async () => {
+      (getCurrentUser as any).mockResolvedValue(mockUser);
+      (prisma.$transaction as any).mockResolvedValue([5, 10, []]);
+
+      const result = await getJobsActivitySummary(7);
+
+      expect(result.jobsTrend).toBe(-50);
+    });
+
+    it("reports a zero trend when the preceding window was also empty", async () => {
+      (getCurrentUser as any).mockResolvedValue(mockUser);
+      (prisma.$transaction as any).mockResolvedValue([0, 0, []]);
+
+      const result = await getJobsActivitySummary(7);
+
+      expect(result.jobsTrend).toBe(0);
     });
 
     it("throws when the user is not authenticated", async () => {

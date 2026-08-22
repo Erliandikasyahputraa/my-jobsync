@@ -2,6 +2,7 @@
 
 import { ResponsivePie } from "@nivo/pie";
 import { useTheme } from "next-themes";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { JobsActivitySummary } from "@/actions/dashboard.actions";
 import { usePersistedTabIndex } from "@/hooks/usePersistedTabIndex";
@@ -23,7 +24,7 @@ export default function JobsActivityCard({ data }: JobsActivityCardProps) {
   );
   const { resolvedTheme } = useTheme();
   const current = data[activeIndex];
-  const { jobsApplied, topActivities, otherHours, totalHours } =
+  const { jobsApplied, jobsTrend, topActivities, otherHours, totalHours } =
     current.summary;
   const slices = buildDonutSlices(
     topActivities,
@@ -35,7 +36,7 @@ export default function JobsActivityCard({ data }: JobsActivityCardProps) {
     <Card className="@lg:col-span-2">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm font-medium text-green-600 min-w-0 truncate">
+          <CardTitle className="text-lg text-green-600 min-w-0 truncate">
             Jobs &amp; Activity
           </CardTitle>
           <div
@@ -69,7 +70,7 @@ export default function JobsActivityCard({ data }: JobsActivityCardProps) {
             ) : (
               <ResponsivePie
                 data={slices}
-                margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                margin={{ top: 4, right: 4, bottom: 4, left: 4 }}
                 innerRadius={0.72}
                 padAngle={2}
                 cornerRadius={2}
@@ -103,12 +104,27 @@ export default function JobsActivityCard({ data }: JobsActivityCardProps) {
               className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-px text-center"
               data-testid="jobs-activity-total"
             >
-              <span className="text-2xl font-bold leading-tight tabular-nums">
+              <span className="text-xl font-bold leading-tight tabular-nums">
                 {totalHours}h
               </span>
-              <span className="text-xs text-muted-foreground tabular-nums">
+              <span className="text-sm text-muted-foreground tabular-nums">
                 {jobsApplied} {jobsApplied === 1 ? "job" : "jobs"}
               </span>
+              {jobsTrend !== 0 && (
+                <span
+                  className={cn(
+                    "flex items-center gap-0.5 text-[10px] tabular-nums",
+                    jobsTrend > 0 ? "text-emerald-600" : "text-rose-600",
+                  )}
+                >
+                  {jobsTrend > 0 ? (
+                    <TrendingUp className="h-3 w-3" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3" />
+                  )}
+                  {Math.abs(jobsTrend)}%
+                </span>
+              )}
             </div>
           </div>
 

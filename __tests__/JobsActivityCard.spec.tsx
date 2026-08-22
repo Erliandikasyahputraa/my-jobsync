@@ -21,11 +21,19 @@ vi.mock("@nivo/pie", () => ({
 describe("JobsActivityCard", () => {
   const user = userEvent.setup();
 
+  // usePersistedTabIndex writes the chosen tab to localStorage, which
+  // vitest's clearMocks does not reset — without this a test that clicks
+  // "30d" decides the starting tab for every test after it.
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   const data = [
     {
       label: "7d",
       summary: {
         jobsApplied: 16,
+        jobsTrend: 25,
         topActivities: [
           { label: "Jobsync", hours: 28.1 },
           { label: "Side Project 1", hours: 9.2 },
@@ -39,6 +47,7 @@ describe("JobsActivityCard", () => {
       label: "30d",
       summary: {
         jobsApplied: 34,
+        jobsTrend: -12,
         topActivities: [{ label: "Job Search", hours: 6.4 }],
         otherHours: 0,
         totalHours: 6.4,
@@ -91,6 +100,34 @@ describe("JobsActivityCard", () => {
     expect(screen.queryByText("Other")).not.toBeInTheDocument();
   });
 
+  it("shows the jobs trend under the job count", () => {
+    render(<JobsActivityCard data={data} />);
+
+    const total = screen.getByTestId("jobs-activity-total");
+
+    expect(within(total).getByText("25%")).toBeInTheDocument();
+  });
+
+  it("drops the sign from a falling trend, leaving the arrow to carry it", async () => {
+    render(<JobsActivityCard data={data} />);
+
+    const toggle = screen.getByTestId("jobs-activity-toggle-group");
+    await user.click(within(toggle).getByRole("button", { name: "30d" }));
+
+    const total = screen.getByTestId("jobs-activity-total");
+
+    expect(within(total).getByText("12%")).toBeInTheDocument();
+    expect(within(total).queryByText("-12%")).not.toBeInTheDocument();
+  });
+
+  it("hides the trend entirely when it is flat", () => {
+    render(<JobsActivityCard data={data.slice(0, 1)} />);
+
+    const total = screen.getByTestId("jobs-activity-total");
+
+    expect(within(total).queryByText("0%")).not.toBeInTheDocument();
+  });
+
   it("says one job, not one jobs", () => {
     render(
       <JobsActivityCard
@@ -99,6 +136,7 @@ describe("JobsActivityCard", () => {
             label: "7d",
             summary: {
               jobsApplied: 1,
+              jobsTrend: 0,
               topActivities: [{ label: "Job Search", hours: 2 }],
               otherHours: 0,
               totalHours: 2,
@@ -119,6 +157,7 @@ describe("JobsActivityCard", () => {
             label: "7d",
             summary: {
               jobsApplied: 3,
+              jobsTrend: 0,
               topActivities: [],
               otherHours: 0,
               totalHours: 0,

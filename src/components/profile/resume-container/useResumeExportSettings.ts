@@ -17,8 +17,8 @@ import {
 
 const KEY = APP_CONSTANTS.RESUME_EXPORT_SETTINGS_STORAGE_KEY;
 
-// Rebuilt from a spread of the defaults, so the key order always comes from
-// that one literal — the preview cache key is JSON.stringify(settings).
+// Rebuilt from a spread of the template's defaults, so a stored object can
+// only ever contribute values — never extra keys, and never a missing one.
 export function coerceResumeExportSettings(
   stored: unknown,
 ): ResumeExportSettings {
