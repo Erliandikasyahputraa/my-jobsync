@@ -387,11 +387,7 @@ export async function importBackup(
     }
   }
 
-  // Nothing else would: syncSchedulerState runs at boot and in the automation
-  // actions, and an import goes through neither. Imported dynamically so
-  // node-cron and the whole scraper graph stay out of this module's imports.
-  const { syncSchedulerState } = await import("@/lib/scheduler");
-  await syncSchedulerState();
+
 
   return { counts, filesWritten: writtenPaths.length, snapshotPath };
 }

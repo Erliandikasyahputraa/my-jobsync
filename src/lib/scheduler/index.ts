@@ -1,12 +1,9 @@
-import cron, { ScheduledTask } from "node-cron";
 import { SCHEDULER_CONSTANTS } from "@/lib/constants";
 import db from "@/lib/db";
 import { runAutomation, AutomationAlreadyRunningError } from "@/lib/scraper";
 import type { JobBoard } from "@/models/automation.model";
 
-let scheduledTask: ScheduledTask | null = null;
-
-async function runDueAutomations() {
+export async function runDueAutomations(): Promise<number> {
   const now = new Date();
   console.log(`[Scheduler] Checking for due automations at ${now.toISOString()}`);
 
@@ -23,10 +20,12 @@ async function runDueAutomations() {
 
     if (dueAutomations.length === 0) {
       console.log("[Scheduler] No automations due to run");
-      return;
+      return 0;
     }
 
     console.log(`[Scheduler] Found ${dueAutomations.length} automation(s) to run`);
+
+    let processed = 0;
 
     for (const automation of dueAutomations) {
       if (!automation.resume) {
@@ -42,9 +41,7 @@ async function runDueAutomations() {
         continue;
       }
 
-      // Skip if a run (manual or scheduled) is already in flight for this
-      // automation. Logger/cancel state is keyed by automationId, so overlapping
-      // runs would clobber each other.
+      // Check if a run is already active (optimistic check before atomic claim)
       const activeRun = await db.automationRun.findFirst({
         where: {
           automationId: automation.id,
@@ -59,6 +56,8 @@ async function runDueAutomations() {
 
       try {
         console.log(`[Scheduler] Running automation: ${automation.name}`);
+        // runAutomation performs an atomic claim internally.
+        // It throws AutomationAlreadyRunningError if it loses the race.
         const result = await runAutomation({
           id: automation.id,
           userId: automation.userId,
@@ -77,6 +76,7 @@ async function runDueAutomations() {
           updatedAt: automation.updatedAt,
         });
         console.log(`[Scheduler] Automation ${automation.name} completed: ${result.status}, saved ${result.jobsSaved} jobs`);
+        processed++;
       } catch (error) {
         if (error instanceof AutomationAlreadyRunningError) {
           console.log(`[Scheduler] Skipping automation ${automation.id} - run already in progress`);
@@ -86,49 +86,14 @@ async function runDueAutomations() {
         console.error(`[Scheduler] Automation ${automation.name} failed:`, message);
       }
     }
+    
+    return processed;
   } catch (error) {
     console.error("[Scheduler] Error running due automations:", error);
+    return 0;
   }
 }
 
-export function startScheduler() {
-  if (!SCHEDULER_CONSTANTS.ENABLED) {
-    console.log("[Scheduler] Disabled via SCHEDULER_CONSTANTS.ENABLED");
-    return;
-  }
-
-  if (scheduledTask) {
-    console.log("[Scheduler] Already running");
-    return;
-  }
-
-  const cronExpression = SCHEDULER_CONSTANTS.CRON_EXPRESSION;
-
-  if (!cron.validate(cronExpression)) {
-    console.error(`[Scheduler] Invalid cron expression: ${cronExpression}`);
-    return;
-  }
-
-  console.log(`[Scheduler] Starting with schedule: ${cronExpression}`);
-
-  scheduledTask = cron.schedule(cronExpression, runDueAutomations, {
-    timezone: process.env.TZ || "UTC",
-  });
-
-  console.log("[Scheduler] Started successfully");
-}
-
-export function stopScheduler() {
-  if (scheduledTask) {
-    scheduledTask.stop();
-    scheduledTask = null;
-    console.log("[Scheduler] Stopped");
-  }
-}
-
-export function isSchedulerRunning(): boolean {
-  return scheduledTask !== null;
-}
 
 // Marks any run stuck in "running" past the stale cutoff as failed. A hard kill
 // mid-run (deploy/OOM/crash) leaves the run row in "running" forever otherwise.
@@ -153,13 +118,4 @@ export async function reapStaleRuns(): Promise<number> {
   }
 }
 
-// Starts or stops the scheduler based on whether active automations exist
-export async function syncSchedulerState() {
-  await reapStaleRuns();
-  const activeCount = await db.automation.count({ where: { status: "active" } });
-  if (activeCount > 0) {
-    startScheduler();
-  } else {
-    stopScheduler();
-  }
-}
+

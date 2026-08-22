@@ -27,10 +27,6 @@ vi.mock("@/utils/user.utils", () => ({
   getCurrentUser: vi.fn(),
 }));
 
-// syncSchedulerState boots node-cron and hits the DB; stub it out.
-vi.mock("@/lib/scheduler", () => ({
-  syncSchedulerState: vi.fn(),
-}));
 
 const RESUME_ID = "11111111-1111-4111-8111-111111111111";
 

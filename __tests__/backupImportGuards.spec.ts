@@ -3,10 +3,10 @@ import db from "@/lib/db";
 import { importBackup } from "@/lib/backup/import";
 import { BackupError, buildManifest } from "@/lib/backup/manifest";
 import { BackupDataSchema } from "@/lib/backup/schema";
-import { syncSchedulerState } from "@/lib/scheduler";
+
 import { writeSnapshot } from "@/lib/backup/snapshot";
 
-vi.mock("@/lib/scheduler", () => ({ syncSchedulerState: vi.fn() }));
+
 
 // Mocked so the guards spec never touches the filesystem; Task 4.1 covers the
 // real thing and Task 7.2 exercises it end to end.
@@ -95,10 +95,7 @@ describe("importBackup guards", () => {
     expect(mockDb.job.deleteMany).not.toHaveBeenCalled();
   });
 
-  it("syncs the scheduler after a successful import", async () => {
-    await importBackup(await emptyBackup(), "user-1", EMAIL, true);
-    expect(syncSchedulerState).toHaveBeenCalled();
-  });
+
 
   it("wipes ChatConversation but never ApiKey or McpAccessToken", async () => {
     await importBackup(await emptyBackup(), "user-1", EMAIL, true);

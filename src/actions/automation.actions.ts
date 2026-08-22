@@ -17,7 +17,6 @@ import type {
 } from "@/models/automation.model";
 import { isAtsBoard } from "@/models/automation.model";
 import { APP_CONSTANTS } from "@/lib/constants";
-import { syncSchedulerState } from "@/lib/scheduler";
 import { generateText } from "ai";
 import {
   getModel,
@@ -197,7 +196,6 @@ export async function createAutomation(input: CreateAutomationInput): Promise<{
       },
     });
 
-    await syncSchedulerState();
 
     return {
       success: true,
@@ -318,7 +316,6 @@ export async function deleteAutomation(id: string): Promise<{
 
     await db.automation.delete({ where: { id } });
 
-    await syncSchedulerState();
 
     return { success: true };
   } catch (error) {
@@ -358,7 +355,6 @@ export async function pauseAutomation(id: string): Promise<{
       },
     });
 
-    await syncSchedulerState();
 
     return {
       success: true,
@@ -403,7 +399,6 @@ export async function resumeAutomation(id: string): Promise<{
       },
     });
 
-    await syncSchedulerState();
 
     return {
       success: true,
