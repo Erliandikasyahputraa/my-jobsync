@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { supabase } from "@/lib/supabase";
 import type JSZip from "jszip";
 import db from "@/lib/db";
 import { APP_CONSTANTS } from "@/lib/constants";
@@ -237,8 +238,6 @@ export async function importBackup(
   // Files are written before the transaction: a failed import leaves orphaned
   // bytes (unlinked below) rather than committed rows pointing at nothing.
   const writtenPaths: string[] = [];
-  const uploadDir = path.join(APP_CONSTANTS.UPLOADS_DIR, "files", "resumes");
-  await fs.mkdir(uploadDir, { recursive: true });
 
   // filePath and fileType are both rebuilt here; neither is taken from the
   // payload. A row whose bytes are absent, oversized or not really a resume
@@ -262,7 +261,7 @@ export async function importBackup(
       null;
 
     if (!entry || file.fileMissing) {
-      newFilePaths.set(file.id, importedFilePath(newId, file.filePath, "pdf"));
+      newFilePaths.set(file.id, importedFilePath(userId, newId, file.filePath, "pdf"));
       continue;
     }
 
@@ -270,14 +269,16 @@ export async function importBackup(
     const checked = checkImportedFile(bytes);
     if (!checked) {
       rejectedFiles.push(file.fileName);
-      newFilePaths.set(file.id, importedFilePath(newId, file.filePath, "pdf"));
+      newFilePaths.set(file.id, importedFilePath(userId, newId, file.filePath, "pdf"));
       continue;
     }
 
-    const target = importedFilePath(newId, entry.name, checked.kind);
+    const target = importedFilePath(userId, newId, entry.name, checked.kind);
     newFilePaths.set(file.id, target);
     newFileTypes.set(file.id, checked.mimeType);
-    await fs.writeFile(target, bytes);
+    if (supabase) {
+      await supabase.storage.from("resumes").upload(target, bytes, { contentType: checked.mimeType, upsert: true });
+    }
     writtenPaths.push(target);
   }
 
@@ -363,9 +364,9 @@ export async function importBackup(
       { timeout: 120_000, maxWait: 15_000 },
     );
   } catch (error) {
-    await Promise.all(
-      writtenPaths.map((p) => fs.unlink(p).catch(() => undefined)),
-    );
+    if (writtenPaths.length > 0 && supabase) {
+      await supabase.storage.from("resumes").remove(writtenPaths);
+    }
     if (error instanceof BackupError) throw error;
     const message = error instanceof Error ? error.message : "";
     if (/database is locked|SQLITE_BUSY/i.test(message)) {
@@ -379,9 +380,11 @@ export async function importBackup(
   // resume files in UPLOADS_DIR forever with no row pointing at them.
   for (const filePath of oldFilePaths) {
     if (writtenPaths.includes(filePath)) continue;
-    await fs.unlink(filePath).catch((error) => {
-      console.warn("[Backup] Could not remove replaced file", filePath, error);
-    });
+    if (supabase) {
+      await supabase.storage.from("resumes").remove([filePath]).catch((error) => {
+        console.warn("[Backup] Could not remove replaced file", filePath, error);
+      });
+    }
   }
 
   // Nothing else would: syncSchedulerState runs at boot and in the automation

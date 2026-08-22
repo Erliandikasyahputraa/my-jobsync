@@ -4,7 +4,6 @@ import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { streamText, Output } from "ai";
 import path from "path";
-import fs from "fs";
 import { getModel } from "@/lib/ai/providers";
 import { checkRateLimit } from "@/lib/ai/rate-limiter";
 import { TEMPERATURES } from "@/lib/ai/config";
@@ -12,6 +11,7 @@ import { preprocessText } from "@/lib/ai";
 import { extractText } from "@/lib/ai/import/extract-text";
 import { ResumeImportSchema } from "@/models/resumeImport.schema";
 import { AiModel } from "@/models/ai.model";
+import { supabase } from "@/lib/supabase";
 import prisma from "@/lib/db";
 import { APP_CONSTANTS } from "@/lib/constants";
 import {
@@ -68,24 +68,25 @@ export const POST = async (req: NextRequest) => {
     );
   }
 
-  // Assert path stays inside the uploads dir (no traversal)
-  const resolvedPath = path.resolve(resume.File.filePath);
-  const uploadsDir = path.resolve(APP_CONSTANTS.UPLOADS_DIR);
-  if (
-    !resolvedPath.startsWith(uploadsDir + path.sep) &&
-    resolvedPath !== uploadsDir
-  ) {
-    return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
+  if (!supabase) {
+    return NextResponse.json(
+      { error: "Supabase is not configured." },
+      { status: 500 },
+    );
   }
 
-  if (!fs.existsSync(resolvedPath)) {
+  const { data: fileData, error: downloadError } = await supabase.storage
+    .from("resumes")
+    .download(resume.File.filePath);
+
+  if (downloadError || !fileData) {
     return NextResponse.json(
-      { error: "File not found on disk. Please re-attach the file." },
+      { error: "File not found in storage. Please re-attach the file." },
       { status: 400 },
     );
   }
 
-  const buf = fs.readFileSync(resolvedPath);
+  const buf = Buffer.from(await fileData.arrayBuffer());
 
   const extractResult = await extractText(buf);
   if (!extractResult.success) {

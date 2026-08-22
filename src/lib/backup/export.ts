@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { supabase } from "@/lib/supabase";
 import JSZip from "jszip";
 import db from "@/lib/db";
 import { INSERT_ORDER, MODEL_SPECS, type BackupModel } from "./ordering";
@@ -105,10 +106,16 @@ export async function buildBackupZip(
   // the snapshot whose bytes land later is covered by the fileMissing marker.
   const zip = new JSZip();
   for (const file of data.File) {
-    try {
-      const bytes = await fs.readFile(file.filePath);
-      zip.file(`files/${file.id}/${path.basename(file.filePath)}`, bytes);
-    } catch {
+    let success = false;
+    if (supabase) {
+      const { data: fileData, error } = await supabase.storage.from("resumes").download(file.filePath);
+      if (!error && fileData) {
+        const bytes = Buffer.from(await fileData.arrayBuffer());
+        zip.file(`files/${file.id}/${path.basename(file.filePath)}`, bytes);
+        success = true;
+      }
+    }
+    if (!success) {
       file.fileMissing = true;
     }
   }

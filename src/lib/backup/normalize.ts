@@ -25,17 +25,13 @@ export function safeEntryName(entryName: string): string {
 // from the sniffed bytes rather than the carried name, so a payload cannot pick
 // what lands in the uploads directory — resume.pdf.exe becomes <id>-resume.pdf.
 export function importedFilePath(
+  userId: string,
   newFileId: string,
   entryName: string,
   kind: "pdf" | "docx",
 ): string {
   const base = safeEntryName(entryName).replace(/\.[^.]+$/, "");
-  return path.join(
-    APP_CONSTANTS.UPLOADS_DIR,
-    "files",
-    "resumes",
-    `${newFileId}-${base}.${kind}`,
-  );
+  return `${userId}/${newFileId}-${base}.${kind}`;
 }
 
 // The same gate the upload route applies, on the same helper: size, then magic

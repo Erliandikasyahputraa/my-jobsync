@@ -11,6 +11,7 @@ import fs from "fs";
 import { getTimestampedFileName } from "@/lib/utils";
 import { APP_CONSTANTS } from "@/lib/constants";
 import { PDF_MAGIC, ZIP_MAGIC } from "@/lib/ai/import/extract-text";
+import { supabase } from "@/lib/supabase";
 
 const ALLOWED_MIME = new Set<string>(APP_CONSTANTS.RESUME_ALLOWED_MIME_TYPES);
 
@@ -58,10 +59,9 @@ export const POST = async (req: NextRequest) => {
         return NextResponse.json({ error: "File content does not match declared type" }, { status: 400 });
       }
 
-      const uploadDir = path.join(APP_CONSTANTS.UPLOADS_DIR, "files", "resumes");
       const timestampedFileName = getTimestampedFileName(file.name);
-      filePath = path.join(uploadDir, timestampedFileName);
-      await uploadFile(file, uploadDir, filePath);
+      filePath = `${userId}/${timestampedFileName}`;
+      await uploadFile(file, filePath);
     }
 
     if (resumeId && title) {
@@ -127,13 +127,20 @@ export const GET = async (req: NextRequest) => {
       );
     }
 
-    const fullFilePath = path.join(filePath);
-    if (!fs.existsSync(fullFilePath)) {
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase is not configured" }, { status: 500 });
+    }
+
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from("resumes")
+      .download(filePath);
+
+    if (downloadError || !fileData) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    const fileType = path.extname(fullFilePath).toLowerCase();
-    const fileName = path.basename(fullFilePath);
+    const fileType = path.extname(filePath).toLowerCase();
+    const fileName = path.basename(filePath);
 
     let contentType;
 
@@ -149,7 +156,7 @@ export const GET = async (req: NextRequest) => {
       );
     }
 
-    const fileContent = fs.readFileSync(fullFilePath);
+    const fileContent = await fileData.arrayBuffer();
 
     // Strip CR/LF from filename to prevent header injection
     const safeFileName = fileName.replace(/[\r\n"]/g, "_");

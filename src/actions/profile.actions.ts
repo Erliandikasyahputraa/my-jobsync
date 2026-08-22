@@ -25,6 +25,7 @@ import { z } from "zod";
 import path from "path";
 import fs from "fs";
 import { writeFile } from "fs/promises";
+import { supabase } from "@/lib/supabase";
 
 // Canonical IDOR guard for actions that only need to confirm resume ownership
 const assertResumeOwnership = async (resumeId: string, userId: string) => {
@@ -723,15 +724,24 @@ export const deleteResumeById = async (
   }
 };
 
-export const uploadFile = async (file: File, dir: string, path: string) => {
+export const uploadFile = async (file: File, path: string) => {
   const bytes = await file.arrayBuffer();
-  const buffer = new Uint8Array(bytes);
+  const buffer = Buffer.from(bytes);
 
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (!supabase) {
+    throw new Error("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
   }
 
-  await writeFile(path, buffer);
+  const { error } = await supabase.storage
+    .from("resumes")
+    .upload(path, buffer, {
+      contentType: file.type,
+      upsert: true,
+    });
+
+  if (error) {
+    throw new Error(`Failed to upload to Supabase: ${error.message}`);
+  }
 };
 
 export const deleteFile = async (fileId: string) => {
@@ -751,8 +761,10 @@ export const deleteFile = async (fileId: string) => {
     throw new Error("File not found or access denied");
   }
 
-  if (fs.existsSync(file.filePath)) {
-    fs.unlinkSync(file.filePath);
+  if (supabase) {
+    await supabase.storage.from("resumes").remove([file.filePath]);
+  } else {
+    console.warn("Supabase not configured, skipping storage deletion");
   }
 
   await prisma.file.delete({ where: { id: fileId } });
