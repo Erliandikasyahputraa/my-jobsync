@@ -1,4 +1,3 @@
-import path from "path";
 import {
   safeEntryName,
   importedFilePath,
@@ -33,8 +32,6 @@ describe("safeEntryName", () => {
 });
 
 describe("importedFilePath", () => {
-  const uploads = APP_CONSTANTS.UPLOADS_DIR;
-
   it("writes inside the user's namespace", () => {
     const p = importedFilePath("user-123", "new-id", "resume.pdf", "pdf");
     expect(p).toBe("user-123/new-id-resume.pdf");
@@ -46,8 +43,6 @@ describe("importedFilePath", () => {
     expect(p.startsWith("user-123/")).toBe(true);
   });
 
-  // The extension follows the sniffed bytes, not the name in the backup, so a
-  // payload cannot choose what the file on disk is called.
   it("overrides the carried extension with the sniffed one", () => {
     expect(importedFilePath("user-123", "new-id", "resume.pdf.exe", "docx")).toBe(
       "user-123/new-id-resume.pdf.docx",
@@ -76,7 +71,6 @@ describe("checkImportedFile", () => {
     expect(checkImportedFile(docx)?.kind).toBe("docx");
   });
 
-  // The whole point: an executable renamed resume.pdf inside the zip.
   it("rejects bytes that are neither, whatever they are called", () => {
     expect(checkImportedFile(Buffer.from("MZ\x90\x00 not a resume"))).toBeNull();
     expect(checkImportedFile(Buffer.from("<script>alert(1)</script>"))).toBeNull();

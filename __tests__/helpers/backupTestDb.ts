@@ -17,7 +17,7 @@ export function pushSchema(url: string): void {
   execFileSync(
     "npx",
     ["prisma", "db", "push", "--skip-generate", "--accept-data-loss"],
-    { env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" },
+    { env: { ...process.env, DATABASE_URL: url }, stdio: "pipe", shell: true },
   );
 }
 
