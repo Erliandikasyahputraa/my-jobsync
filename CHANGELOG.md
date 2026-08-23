@@ -1,5 +1,45 @@
 # Changelog
 
+## [1.1.18](https://github.com/Gsync/jobsync/compare/v1.1.17...v1.1.18) (2026-08-23)
+
+
+### Features
+
+* implement version check and update notifications
+* update JobsActivityCard to label slices directly on the chart and add arcLabelLines function
+* add jobs trend calculation and minor adjustments
+* merge the Jobs and Activities cards into one donut card
+* add getDefaultContactInfo, the export dialog and panel, both trigger surfaces and the filename suffix
+* add contact-parts helper, letter template, PDF generator and export guard
+* add CoverLetterExportSettings model, storage key and buildLetterStyles
+* add customizable export settings (font, size, margins, spacing) with token-based style builders
+* wire the preview + settings panes into ExportPdfDialog and add a fit page/width preview control
+* add PdfPreviewPane canvas renderer and ExportSettingsPanel template picker
+* add useResumePdfPreview hook with debounced, cached blob generation
+* add ResumeExportSettings model, canExportResume predicate, prepared-blob export path, and dev:webpack script
+* restructure job actions into separate modules for better organization and maintainability refactor(activity, profile): move requireUser to shared module for reuse across action directories
+
+### Bug Fixes
+
+* update Jobs heading and adjust activity count assertion in tests
+
+### Other Changes
+
+* add GitHub Actions workflow for automated releases
+* move preview pane, settings rows, preview/settings hooks and dialog shell into the shared layer
+* extract shared pdfExport model, style tokens, HTML converter and download helpers
+* replace direct resume ownership check with assertResumeOwnership for improved code clarity
+* replace getCurrentUser with requireUser for authentication consistency across automation actions
+* simplify TasksContainer by removing filter change callback; introduce TasksToolbar for enhanced UI and functionality
+* JobsContainer to use custom hooks for filters and job list management; introduce JobsToolbar for improved UI organization
+* split actions into separate modules for better organization and maintainability
+* automation.actions, reduce file size, use barrel, make it readable
+* Refactor task actions into separate modules for better organization and maintainability; add company actions for CRUD operations; implement dashboard actions for activity and job statistics; introduce shared utility functions for date handling.
+* restructure actions into separate modules for better organization and maintainability
+* resumeContainer file, use barrel, reduce file size, make it readable
+* import actions from specific files, reduce file length, make it more readable
+
+
 ## [1.1.17](https://github.com/Gsync/jobsync/compare/v1.1.16...v1.1.17) (2026-08-16)
 
 
