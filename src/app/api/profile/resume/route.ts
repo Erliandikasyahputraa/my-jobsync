@@ -7,7 +7,7 @@ import {
   uploadFile,
 } from "@/actions/profile.actions";
 import path from "path";
-import fs from "fs";
+
 import { getTimestampedFileName } from "@/lib/utils";
 import { APP_CONSTANTS } from "@/lib/constants";
 import { PDF_MAGIC, ZIP_MAGIC } from "@/lib/ai/import/extract-text";
