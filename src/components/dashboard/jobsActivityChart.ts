@@ -46,3 +46,23 @@ export function buildDonutSlices(
 
   return slices;
 }
+
+// Arc link label text, kept neutral rather than tinted from the slice so
+// the grey "Other" hue never has to double as readable body text.
+export const ARC_LABEL_TEXT_COLOR = {
+  light: "#334155",
+  dark: "#e2e8f0",
+} as const;
+
+const ARC_LABEL_MAX_CHARS = 16;
+
+// The label renders as two lines, so the name is trimmed rather than left
+// to run off the card edge.
+export function arcLabelLines(slice: DonutSlice): [string, string] {
+  const name =
+    slice.label.length > ARC_LABEL_MAX_CHARS
+      ? `${slice.label.slice(0, ARC_LABEL_MAX_CHARS - 1).trimEnd()}…`
+      : slice.label;
+
+  return [name, `${slice.value}h`];
+}

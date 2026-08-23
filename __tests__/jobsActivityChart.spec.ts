@@ -1,5 +1,6 @@
 import {
   buildDonutSlices,
+  arcLabelLines,
   OTHER_SLICE_ID,
 } from "@/components/dashboard/jobsActivityChart";
 
@@ -74,5 +75,29 @@ describe("buildDonutSlices", () => {
 
   it("returns nothing when there is no activity at all", () => {
     expect(buildDonutSlices([], 0, "light")).toEqual([]);
+  });
+});
+
+describe("arcLabelLines", () => {
+  it("splits the name and the hours onto separate lines", () => {
+    expect(
+      arcLabelLines({
+        id: "Jobsync",
+        label: "Jobsync",
+        value: 28.1,
+        color: "#2a9d90",
+      }),
+    ).toEqual(["Jobsync", "28.1h"]);
+  });
+
+  it("trims a long activity name so it cannot run off the card", () => {
+    expect(
+      arcLabelLines({
+        id: "x",
+        label: "Interview Preparation Deep Dive",
+        value: 4,
+        color: "#2a9d90",
+      }),
+    ).toEqual(["Interview Prepa…", "4h"]);
   });
 });

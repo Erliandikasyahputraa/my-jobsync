@@ -64,15 +64,13 @@ describe("JobsActivityCard", () => {
     expect(within(total).getByText("16 jobs")).toBeInTheDocument();
   });
 
-  it("lists every slice with its hours in the legend", () => {
+  it("labels the slices on the chart instead of in a legend", () => {
     render(<JobsActivityCard data={data} />);
 
-    const legend = screen.getByTestId("jobs-activity-legend");
-
-    expect(within(legend).getByText("Jobsync")).toBeInTheDocument();
-    expect(within(legend).getByText("28.1h")).toBeInTheDocument();
-    expect(within(legend).getByText("Other")).toBeInTheDocument();
-    expect(within(legend).getByText("17.5h")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("jobs-activity-legend"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("donut")).toBeInTheDocument();
   });
 
   it("feeds the same slices to the donut", () => {
